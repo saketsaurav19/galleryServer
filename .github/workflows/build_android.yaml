@@ -15,15 +15,30 @@ jobs:
   build_apk:
     name: Build Android APK
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./Android/src
+
     steps:
-      - name: Checkout the source code
-        uses: actions/checkout@v3
-      - uses: actions/setup-java@v4
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
-      - name: Build
+
+      - name: Grant execute permission
+        run: chmod +x Android/src/gradlew
+
+      - name: Build APK
+        working-directory: Android/src
         run: ./gradlew assembleRelease
+
+      # 🔍 Debug (optional but useful)
+      - name: List APK files
+        run: find Android -name "*.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: Android/src/**/build/outputs/apk/**/*.apk
