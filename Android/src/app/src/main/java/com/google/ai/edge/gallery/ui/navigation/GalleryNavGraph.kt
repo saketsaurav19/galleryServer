@@ -442,7 +442,31 @@ fun GalleryNavHost(
       enterTransition = { slideUpEnter() },
       exitTransition = { slideDownExit() },
     ) {
+      val context = LocalContext.current.applicationContext
+      LaunchedEffect(Unit) {
+        EdgeServerManager.modelFinderCallback = {
+          val models = modelManagerViewModel.getAllDownloadedModels()
+          if (models.isNotEmpty()) {
+            val firstModel = models.first()
+            val task = modelManagerViewModel.getCustomTaskByTaskId(firstModel.bestForTaskIds.firstOrNull() ?: "")?.task
+              ?: modelManagerViewModel.uiState.value.tasks.firstOrNull { it.models.contains(firstModel) }
+
+            task?.let {
+              // Note: modelManagerViewModel.initializeModel launches a coroutine but does not block.
+              // To avoid returning false for the first auto-discovered `/health` request, the server
+              // uses a polling wait in `tryAutoDiscoverModel` up to 90s, waiting for instance to be set.
+              modelManagerViewModel.initializeModel(context, task = task, model = firstModel, force = false, onDone = {
+                firstModel.instance?.let {
+                  EdgeServerManager.bindModel(firstModel, firstModel.runtimeHelper, firstModel.displayName.ifEmpty { firstModel.name })
+                }
+              })
+            }
+          }
+        }
+      }
+
       EdgeServerScreen(
+        modelManagerViewModel = modelManagerViewModel,
         onBack = {
           enableHomeScreenAnimation = false
           navController.navigateUp()

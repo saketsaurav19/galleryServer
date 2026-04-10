@@ -65,6 +65,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.ai.edge.gallery.ui.modelmanager.ModelManagerViewModel
+import com.google.ai.edge.gallery.runtime.runtimeHelper
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 
 /**
  * Full-screen control panel for the Edge Server.
@@ -72,10 +77,12 @@ import androidx.compose.ui.unit.sp
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EdgeServerScreen(onBack: () -> Unit) {
+fun EdgeServerScreen(modelManagerViewModel: ModelManagerViewModel, onBack: () -> Unit) {
   val state by EdgeServerManager.state.collectAsState()
   val context = LocalContext.current
   val clipboard = LocalClipboardManager.current
+  val uiState by modelManagerViewModel.uiState.collectAsState()
+  val downloadedModels = remember(uiState) { modelManagerViewModel.getAllDownloadedModels() }
 
   Scaffold(
     topBar = {
@@ -195,6 +202,55 @@ fun EdgeServerScreen(onBack: () -> Unit) {
               }
             },
           )
+        }
+      }
+
+      // ── Select Model ──
+      var expanded by remember { mutableStateOf(false) }
+      Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+      ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+          Text(
+            text = "Active Model",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+          )
+          Spacer(Modifier.height(12.dp))
+          ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded }
+          ) {
+            OutlinedTextField(
+              value = state.modelName.ifEmpty { "Select a model" },
+              onValueChange = {},
+              readOnly = true,
+              trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+              modifier = Modifier.menuAnchor().fillMaxWidth()
+            )
+            ExposedDropdownMenu(
+              expanded = expanded,
+              onDismissRequest = { expanded = false }
+            ) {
+              downloadedModels.forEach { model ->
+                DropdownMenuItem(
+                  text = { Text(model.displayName.ifEmpty { model.name }) },
+                  onClick = {
+                    expanded = false
+                    val task = modelManagerViewModel.getCustomTaskByTaskId(model.bestForTaskIds.firstOrNull() ?: "")?.task ?: modelManagerViewModel.uiState.value.tasks.firstOrNull { it.models.contains(model) }
+                    task?.let {
+                      modelManagerViewModel.initializeModel(context, task = task, model = model, force = false, onDone = {
+                        model.instance?.let {
+                          EdgeServerManager.bindModel(model, model.runtimeHelper, model.displayName.ifEmpty { model.name })
+                        }
+                      })
+                    }
+                  }
+                )
+              }
+            }
+          }
         }
       }
 
