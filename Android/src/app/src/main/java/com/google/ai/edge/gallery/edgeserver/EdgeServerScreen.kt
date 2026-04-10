@@ -17,6 +17,7 @@
 package com.google.ai.edge.gallery.edgeserver
 
 import android.widget.Toast
+import java.net.NetworkInterface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -66,6 +67,32 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+private fun getLocalIpAddress(): String? {
+    try {
+        val interfaces = NetworkInterface.getNetworkInterfaces() ?: return null
+        var foundAddress: String? = null
+        for (intf in interfaces) {
+            val addrs = intf.inetAddresses
+            for (addr in addrs) {
+                if (!addr.isLoopbackAddress && addr is java.net.Inet4Address) {
+                    val ip = addr.hostAddress
+                    if (ip != null) {
+                        if (ip.startsWith("192.")) {
+                            return ip
+                        }
+                        if (foundAddress == null) {
+                            foundAddress = ip
+                        }
+                    }
+                }
+            }
+        }
+        return foundAddress
+    } catch (e: Exception) {
+        return null
+    }
+}
+
 /**
  * Full-screen control panel for the Edge Server.
  * Shows server status, an on/off toggle, connection URL, and usage hints.
@@ -76,6 +103,8 @@ fun EdgeServerScreen(onBack: () -> Unit) {
   val state by EdgeServerManager.state.collectAsState()
   val context = LocalContext.current
   val clipboard = LocalClipboardManager.current
+
+  val localIp = remember { getLocalIpAddress() }
 
   Scaffold(
     topBar = {
@@ -226,6 +255,24 @@ fun EdgeServerScreen(onBack: () -> Unit) {
                 Toast.makeText(context, "URL copied", Toast.LENGTH_SHORT).show()
               }) {
                 Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy URL")
+              }
+            }
+            if (state.host == "0.0.0.0" && localIp != null) {
+              Spacer(Modifier.height(8.dp))
+              val localIpUrl = "http://$localIp:${state.port}/v1"
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                  text = localIpUrl,
+                  fontFamily = FontFamily.Monospace,
+                  fontSize = 14.sp,
+                  modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = {
+                  clipboard.setText(AnnotatedString(localIpUrl))
+                  Toast.makeText(context, "URL copied", Toast.LENGTH_SHORT).show()
+                }) {
+                  Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy URL")
+                }
               }
             }
           }
