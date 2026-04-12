@@ -100,6 +100,7 @@ private const val ROUTE_MODEL = "route_model"
 private const val ROUTE_BENCHMARK = "benchmark"
 private const val ROUTE_MODEL_MANAGER = "model_manager"
 private const val ROUTE_EDGE_SERVER = "edge_server"
+private const val ROUTE_MCP_SERVERS = "mcp_servers"
 private const val ENTER_ANIMATION_DURATION_MS = 500
 private val ENTER_ANIMATION_EASING = EaseOutExpo
 private const val ENTER_ANIMATION_DELAY_MS = 100
@@ -213,6 +214,7 @@ fun GalleryNavHost(
             },
             onModelsClicked = { navController.navigate(ROUTE_MODEL_MANAGER) },
             onEdgeServerClicked = { navController.navigate(ROUTE_EDGE_SERVER) },
+            onMcpServersClicked = { navController.navigate(ROUTE_MCP_SERVERS) },
             gm4 = true,
           )
         }
@@ -434,6 +436,17 @@ fun GalleryNavHost(
           },
         )
       }
+    }
+
+    // MCP Servers page.
+    composable(
+      route = ROUTE_MCP_SERVERS,
+      enterTransition = { slideUpEnter() },
+      exitTransition = { slideDownExit() },
+    ) {
+      com.google.ai.edge.gallery.ui.mcpserver.McpServersScreen(
+        navigateUp = { navController.popBackStack() }
+      )
     }
 
     // Edge Server page.

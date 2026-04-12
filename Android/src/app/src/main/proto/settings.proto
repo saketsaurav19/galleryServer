@@ -61,6 +61,11 @@ message LlmConfig {
   bool support_thinking = 10;
 }
 
+message McpServer {
+  string name = 1;
+  string url = 2;
+}
+
 message Settings {
   Theme theme = 1;
   AccessTokenData access_token_data = 2;  // deprecated
@@ -78,6 +83,7 @@ message Settings {
   // copybara:strip_end
 
   repeated string viewed_promo_id = 10;
+  repeated McpServer mcp_servers = 11;
 }
 
 message UserData {

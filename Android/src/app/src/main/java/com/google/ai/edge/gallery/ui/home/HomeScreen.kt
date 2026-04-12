@@ -164,6 +164,7 @@ fun HomeScreen(
   navigateToTaskScreen: (Task) -> Unit,
   onModelsClicked: () -> Unit,
   onEdgeServerClicked: () -> Unit = {},
+  onMcpServersClicked: () -> Unit = {},
   enableAnimation: Boolean,
   modifier: Modifier = Modifier,
   gm4: Boolean = false,
@@ -351,7 +352,27 @@ fun HomeScreen(
                     ),
                 )
                 Spacer(modifier = Modifier.width(16.dp))
-                Spacer(modifier = Modifier.weight(1f))
+                SquareDrawerItem(
+                  label = "MCP Servers",
+                  description = "Configure external MCP servers",
+                  icon = Icons.Rounded.Dns,
+                  onClick = {
+                    scope.launch { drawerState.close() }
+                    scope.launch {
+                      delay(50)
+                      onMcpServersClicked()
+                    }
+                  },
+                  modifier = Modifier.weight(1f),
+                  iconBrush =
+                    linearGradient(
+                      colors =
+                        listOf(
+                          MaterialTheme.customColors.taskBgGradientColors[3][0],
+                          MaterialTheme.customColors.taskBgGradientColors[3][1],
+                        )
+                    ),
+                )
               }
             }
           }

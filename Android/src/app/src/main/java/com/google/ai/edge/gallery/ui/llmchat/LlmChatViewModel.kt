@@ -37,16 +37,19 @@ import com.google.ai.edge.gallery.ui.modelmanager.ModelManagerViewModel
 import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.ToolProvider
+import com.google.ai.edge.gallery.data.DataStoreRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 private const val TAG = "AGLlmChatViewModel"
 
 @OptIn(ExperimentalApi::class)
-open class LlmChatViewModelBase() : ChatViewModel() {
+open class LlmChatViewModelBase(private val dataStoreRepository: DataStoreRepository? = null) : ChatViewModel() {
   fun generateResponse(
     model: Model,
     input: String,
@@ -256,6 +259,24 @@ open class LlmChatViewModelBase() : ChatViewModel() {
     enableConversationConstrainedDecoding: Boolean = false,
   ) {
     viewModelScope.launch(Dispatchers.Default) {
+      var finalSystemInstruction = systemInstruction
+      if (dataStoreRepository != null) {
+        val mcpServers = dataStoreRepository.settings.first().mcpServersList
+        if (mcpServers.isNotEmpty()) {
+          val mcpServersDescriptions = mcpServers.joinToString("\n") { "- ${it.name} (${it.url})" }
+          val mcpContext = "\n\nAvailable MCP Servers:\n$mcpServersDescriptions\n"
+
+          // We can't trivially extract the contents from LiteRT's Contents API directly via parts.
+          // Since systemInstruction usually isn't present in standard LlmChatViewModel unless manually passed
+          // (and agent overrides it anyway), we'll append if there isn't one, but for existing Contents we'd
+          // need the original string which isn't cleanly accessible.
+          // The SkillManagerViewModel injection handles the most complex Agent chat scenarios.
+          if (finalSystemInstruction == null) {
+             finalSystemInstruction = Contents.of(mcpContext)
+          }
+        }
+      }
+
       setIsResettingSession(true)
       clearAllMessages(model = model)
       stopResponse(model = model)
@@ -341,8 +362,8 @@ open class LlmChatViewModelBase() : ChatViewModel() {
   }
 }
 
-@HiltViewModel class LlmChatViewModel @Inject constructor() : LlmChatViewModelBase()
+@HiltViewModel class LlmChatViewModel @Inject constructor(dataStoreRepository: DataStoreRepository) : LlmChatViewModelBase(dataStoreRepository)
 
-@HiltViewModel class LlmAskImageViewModel @Inject constructor() : LlmChatViewModelBase()
+@HiltViewModel class LlmAskImageViewModel @Inject constructor(dataStoreRepository: DataStoreRepository) : LlmChatViewModelBase(dataStoreRepository)
 
-@HiltViewModel class LlmAskAudioViewModel @Inject constructor() : LlmChatViewModelBase()
+@HiltViewModel class LlmAskAudioViewModel @Inject constructor(dataStoreRepository: DataStoreRepository) : LlmChatViewModelBase(dataStoreRepository)

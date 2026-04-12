@@ -55,8 +55,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.runBlocking
 
 private const val TAG = "AGSkillManagerVM"
 
@@ -683,7 +685,15 @@ constructor(
     // Description: skill_description_3
     // ------
     val selectedSkillsNamesAndDescriptions = getSelectedSkillsNamesAndDescriptions()
-    val systemPrompt = baseSystemPrompt.replace("___SKILLS___", selectedSkillsNamesAndDescriptions)
+    var systemPrompt = baseSystemPrompt.replace("___SKILLS___", selectedSkillsNamesAndDescriptions)
+
+    // Inject MCP Servers if available
+    val mcpServers = runBlocking { dataStoreRepository.settings.first().mcpServersList }
+    if (mcpServers.isNotEmpty()) {
+      val mcpServersDescriptions = mcpServers.joinToString("\n") { "- ${it.name} (${it.url})" }
+      systemPrompt += "\n\nAvailable MCP Servers:\n$mcpServersDescriptions\n"
+    }
+
     Log.d(TAG, "System prompt:\n$systemPrompt")
     return Contents.of(systemPrompt)
   }

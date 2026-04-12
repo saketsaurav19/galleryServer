@@ -28,11 +28,14 @@ import com.google.ai.edge.gallery.proto.Skill
 import com.google.ai.edge.gallery.proto.Skills
 import com.google.ai.edge.gallery.proto.Theme
 import com.google.ai.edge.gallery.proto.UserData
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
 // TODO(b/423700720): Change to async (suspend) functions
 interface DataStoreRepository {
+  val settings: Flow<Settings>
+  suspend fun updateSettings(transform: suspend (Settings) -> Settings)
   fun saveTextInputHistory(history: List<String>)
 
   fun readTextInputHistory(): List<String>
@@ -119,6 +122,14 @@ class DefaultDataStoreRepository(
   private val benchmarkResultsDataStore: DataStore<BenchmarkResults>,
   private val skillsDataStore: DataStore<Skills>,
 ) : DataStoreRepository {
+
+  override val settings: Flow<Settings>
+    get() = dataStore.data
+
+  override suspend fun updateSettings(transform: suspend (Settings) -> Settings) {
+    dataStore.updateData(transform)
+  }
+
   override fun saveTextInputHistory(history: List<String>) {
     runBlocking {
       dataStore.updateData { settings ->
