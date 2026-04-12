@@ -175,6 +175,7 @@ private val PREDEFINED_LLM_TASK_ORDER =
     BuiltInTaskId.LLM_PROMPT_LAB,
     BuiltInTaskId.LLM_TINY_GARDEN,
     BuiltInTaskId.LLM_MOBILE_ACTIONS,
+    BuiltInTaskId.LLM_WEBVIEW_AGENT,
   )
 
 /**
@@ -620,6 +621,7 @@ constructor(
         BuiltInTaskId.LLM_TINY_GARDEN,
         BuiltInTaskId.LLM_MOBILE_ACTIONS,
         BuiltInTaskId.LLM_AGENT_CHAT,
+        BuiltInTaskId.LLM_WEBVIEW_AGENT,
       )
     for (task in getTasksByIds(ids = setOfTasks)) {
       // Remove duplicated imported model if existed.
@@ -894,7 +896,7 @@ constructor(
 
         if (modelAllowlist == null) {
           // Load from github.
-          var version = BuildConfig.VERSION_NAME.replace(".", "_")
+          var version = BuildConfig.VERSION_NAME.substringBefore("-").replace(".", "_")
           val url = getAllowlistUrl(version)
           Log.d(TAG, "Loading model allowlist from internet. Url: $url")
           val data = getJsonResponse<ModelAllowlist>(url = url)
@@ -1113,6 +1115,7 @@ constructor(
       tasks.get(key = BuiltInTaskId.LLM_CHAT)?.models?.add(model)
       tasks.get(key = BuiltInTaskId.LLM_PROMPT_LAB)?.models?.add(model)
       tasks.get(key = BuiltInTaskId.LLM_AGENT_CHAT)?.models?.add(model)
+      tasks.get(key = BuiltInTaskId.LLM_WEBVIEW_AGENT)?.models?.add(model)
       if (model.llmSupportImage) {
         tasks.get(key = BuiltInTaskId.LLM_ASK_IMAGE)?.models?.add(model)
       }

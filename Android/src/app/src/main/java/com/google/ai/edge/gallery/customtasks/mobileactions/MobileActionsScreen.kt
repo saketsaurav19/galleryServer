@@ -573,9 +573,9 @@ fun MainUi(
                   }
                 },
                 modifier = Modifier.weight(1f),
-              ) { tabIndex ->
+              ) { targetIndex ->
                 // Model response.
-                if (tabIndex == 0) {
+                if (targetIndex == 0) {
                   Column(modifier = Modifier.fillMaxWidth()) {
                     val cdResponse = stringResource(R.string.cd_model_response_text)
                     MarkdownText(
