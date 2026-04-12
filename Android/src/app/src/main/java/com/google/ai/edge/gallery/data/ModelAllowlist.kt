@@ -96,7 +96,8 @@ data class AllowedModel(
         taskTypes.contains(BuiltInTaskId.LLM_ASK_AUDIO) ||
         taskTypes.contains(BuiltInTaskId.LLM_ASK_IMAGE) ||
         taskTypes.contains(BuiltInTaskId.LLM_MOBILE_ACTIONS) ||
-        taskTypes.contains(BuiltInTaskId.LLM_TINY_GARDEN)
+        taskTypes.contains(BuiltInTaskId.LLM_TINY_GARDEN) ||
+        taskTypes.contains(BuiltInTaskId.LLM_WEBVIEW_AGENT)
     var configs: MutableList<Config> = mutableListOf()
     var llmMaxToken = 1024
     var llmMaxContextLength: Int? = null
