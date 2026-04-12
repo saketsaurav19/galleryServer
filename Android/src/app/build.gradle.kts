@@ -36,8 +36,12 @@ android {
     applicationId = "com.google.aiedge.gallery"
     minSdk = 31
     targetSdk = 35
-    versionCode = 23
-    versionName = "1.0.11"
+
+    val dynamicVersionCode = project.findProperty("dynamicVersionCode") as? String
+    versionCode = dynamicVersionCode?.toIntOrNull() ?: 23
+
+    val dynamicVersionNameSuffix = project.findProperty("dynamicVersionNameSuffix") as? String
+    versionName = "1.0.11" + (dynamicVersionNameSuffix ?: "")
 
     // Needed for HuggingFace auth workflows.
     // Use the scheme of the "Redirect URLs" in HuggingFace app.
