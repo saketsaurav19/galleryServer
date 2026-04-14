@@ -229,6 +229,21 @@ fun ClawScreen(
                       t.models.any { it.name == model.name }
                     }
                     if (task != null) {
+                      // Clean up previous model to prevent OOM crash
+                      val prevModel = ClawAgent.activeModel
+                      if (prevModel != null && prevModel.name != model.name) {
+                        val prevTask = modelManagerViewModel.uiState.value.tasks.find { t ->
+                          t.models.any { it.name == prevModel.name }
+                        }
+                        if (prevTask != null) {
+                          modelManagerViewModel.cleanupModel(
+                            context = context,
+                            task = prevTask,
+                            model = prevModel,
+                          )
+                        }
+                      }
+
                       if (model.instance != null) {
                         // Already initialized, just bind
                         ClawAgent.activeModel = model
