@@ -51,6 +51,22 @@
     <uses-feature android:name="android.hardware.camera.flash"
         android:required="false" />
 
+    <!-- Allow Claw to query and launch other apps (Android 11+ package visibility) -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
+
     <application
         android:name="${applicationName}"
         android:allowBackup="true"
@@ -58,6 +74,7 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="Edge Gallery"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.Gallery"
@@ -146,6 +163,19 @@
             android:name=".edgeserver.EdgeServerService"
             android:exported="false"
             android:foregroundServiceType="specialUse" />
+
+        <!-- Claw: On-device GUI Agent -->
+        <service
+            android:name=".claw.ClawAccessibilityService"
+            android:exported="false"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/claw_accessibility_config" />
+        </service>
 
 
         <meta-data

@@ -43,6 +43,8 @@ android {
     val dynamicVersionNameSuffix = project.findProperty("dynamicVersionNameSuffix") as? String
     versionName = "1.0.11" + (dynamicVersionNameSuffix ?: "")
 
+
+
     // Needed for HuggingFace auth workflows.
     // Use the scheme of the "Redirect URLs" in HuggingFace app.
     manifestPlaceholders["appAuthRedirectScheme"] =
@@ -70,6 +72,15 @@ android {
   buildFeatures {
     compose = true
     buildConfig = true
+  }
+
+  splits {
+    abi {
+      isEnable = true
+      reset()
+      include("arm64-v8a", "armeabi-v7a", "x86_64")
+      isUniversalApk = true  // Also build a fat APK containing all ABIs
+    }
   }
 }
 
