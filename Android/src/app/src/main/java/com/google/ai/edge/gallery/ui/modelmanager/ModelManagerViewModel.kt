@@ -403,6 +403,7 @@ constructor(
             ModelInitializationStatusType.INITIALIZED
       ) {
         Log.d(TAG, "Model '${model.name}' has been initialized. Skipping.")
+        onDone()
         return@launch
       }
 
