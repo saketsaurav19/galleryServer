@@ -79,9 +79,9 @@ class EdgeServerService : Service() {
   }
 
   fun setActiveModel(model: Model, helper: LlmModelHelper, displayName: String) {
-    server?.activeModel = model
     server?.activeModelHelper = helper
     server?.activeModelDisplayName = displayName
+    server?.activeModel = model
     Log.i(TAG, "Model bound: $displayName")
   }
 

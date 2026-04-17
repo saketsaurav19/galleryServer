@@ -30,7 +30,9 @@ import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.Condition
 import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 private const val TAG = "EdgeServer"
 
@@ -60,7 +62,16 @@ class EdgeServer(
   }
 
   /** The active model, set via [EdgeServerManager.bindModel]. */
+  private val modelLock = ReentrantLock()
+  private val modelCondition = modelLock.newCondition()
   @Volatile var activeModel: Model? = null
+    set(value) {
+      modelLock.withLock {
+        field = value
+        modelCondition.signalAll()
+      }
+    }
+
   @Volatile var activeModelHelper: LlmModelHelper? = null
   @Volatile var activeModelDisplayName: String = ""
 
@@ -348,17 +359,33 @@ class EdgeServer(
     val finder = modelFinder ?: return
     Log.i(TAG, "No model bound — invoking modelFinder...")
     finder.invoke()
+
     // Wait up to 90s for model initialization (GPU init can be slow).
-    var waited = 0L
-    while (activeModel?.instance == null && waited < 90_000L) {
-      Thread.sleep(2_000L)
-      waited += 2_000L
-      if (waited % 10_000L == 0L) Log.i(TAG, "Waiting for model init... (${waited / 1000}s)")
+    val timeoutMs = 90_000L
+    val startTs = System.currentTimeMillis()
+
+    modelLock.withLock {
+      while (activeModel?.instance == null) {
+        val elapsed = System.currentTimeMillis() - startTs
+        if (elapsed >= timeoutMs) break
+
+        val remaining = timeoutMs - elapsed
+        // Wait at most 2 seconds at a time to allow for periodic logging.
+        val waitTime = minOf(remaining, 2_000L)
+        modelCondition.await(waitTime, TimeUnit.MILLISECONDS)
+
+        val currentElapsed = System.currentTimeMillis() - startTs
+        if ((currentElapsed / 10_000) > (elapsed / 10_000)) {
+          Log.i(TAG, "Waiting for model init... (${currentElapsed / 1000}s)")
+        }
+      }
     }
+
+    val totalWaited = System.currentTimeMillis() - startTs
     if (activeModel?.instance != null) {
-      Log.i(TAG, "Model available after ${waited / 1000}s")
+      Log.i(TAG, "Model available after ${totalWaited / 1000}s")
     } else {
-      Log.w(TAG, "Model not available after ${waited / 1000}s")
+      Log.w(TAG, "Model not available after ${totalWaited / 1000}s")
     }
   }
 

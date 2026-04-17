@@ -117,9 +117,9 @@ object EdgeServerManager {
 
   /** Bind a loaded model so the server can serve inference requests. */
   fun bindModel(model: Model, helper: LlmModelHelper, displayName: String) {
-    server?.activeModel = model
     server?.activeModelHelper = helper
     server?.activeModelDisplayName = displayName
+    server?.activeModel = model
     service?.setActiveModel(model, helper, displayName)
     _state.value = _state.value.copy(modelName = displayName)
     Log.i(TAG, "Model bound: $displayName")
