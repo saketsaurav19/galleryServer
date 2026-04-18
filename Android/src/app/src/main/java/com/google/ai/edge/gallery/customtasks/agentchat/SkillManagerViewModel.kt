@@ -41,6 +41,7 @@ import com.google.ai.edge.gallery.common.getJsonResponse
 import com.google.ai.edge.gallery.data.AllowedSkill
 import com.google.ai.edge.gallery.data.DataStoreRepository
 import com.google.ai.edge.gallery.data.SkillAllowlist
+import com.google.ai.edge.gallery.data.SkillRepository
 import com.google.ai.edge.gallery.proto.Skill
 import com.google.ai.edge.litertlm.Contents
 import dagger.hilt.android.lifecycle.HiltViewModel
