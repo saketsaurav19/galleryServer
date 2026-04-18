@@ -91,7 +91,6 @@ class ClawAccessibilityService : AccessibilityService() {
     val root = rootInActiveWindow ?: return ScreenDescription("unknown", emptyList())
     val elements = mutableListOf<UiElement>()
     collectElements(root, elements)
-    root.recycle()
 
     // Limit to MAX_ELEMENTS most relevant (interactive first, then visible text)
     val sorted = elements.sortedWith(
@@ -155,7 +154,6 @@ class ClawAccessibilityService : AccessibilityService() {
     for (i in 0 until node.childCount) {
       val child = node.getChild(i) ?: continue
       collectElements(child, out, depth + 1)
-      child.recycle()
     }
   }
 
@@ -236,21 +234,17 @@ class ClawAccessibilityService : AccessibilityService() {
       val args = android.os.Bundle().apply {
         putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
       }
-      val result = focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-      focused.recycle()
-      root.recycle()
+      focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
       return result
     }
-    root.recycle()
     return false
   }
 
   private fun findFocusedEditable(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-    if (node.isFocused && node.isEditable) return AccessibilityNodeInfo.obtain(node)
+    if (node.isFocused && node.isEditable) return AccessibilityNodeInfo(node)
     for (i in 0 until node.childCount) {
       val child = node.getChild(i) ?: continue
       val result = findFocusedEditable(child)
-      child.recycle()
       if (result != null) return result
     }
     return null

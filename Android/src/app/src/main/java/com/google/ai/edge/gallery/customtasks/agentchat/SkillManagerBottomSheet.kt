@@ -124,8 +124,8 @@ private enum class AddSkillOptionType {
 
 private data class AddSkillOption(
   val type: AddSkillOptionType,
-  @StringRes val titleResId: Int,
-  @StringRes val descriptionResId: Int,
+  @get:StringRes val titleResId: Int,
+  @get:StringRes val descriptionResId: Int,
   val icon: ImageVector,
 )
 

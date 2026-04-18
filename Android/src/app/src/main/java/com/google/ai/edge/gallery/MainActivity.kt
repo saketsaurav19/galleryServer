@@ -72,7 +72,9 @@ class MainActivity : ComponentActivity() {
     // Debug: Dump all intent extras to see what FCM unloads
     intent.extras?.let { extras ->
       for (key in extras.keySet()) {
-        Log.d(TAG, "onCreate Extra -> Key: $key, Value: ${extras.get(key)}")
+        @Suppress("DEPRECATION")
+        val value = extras.get(key)
+        Log.d(TAG, "onCreate Extra -> Key: $key, Value: $value")
       }
     }
 
@@ -179,6 +181,7 @@ class MainActivity : ComponentActivity() {
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
   }
 
+
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
@@ -186,7 +189,9 @@ class MainActivity : ComponentActivity() {
     // Debug: Dump all intent extras to see what FCM unloads
     intent.extras?.let { extras ->
       for (key in extras.keySet()) {
-        Log.d(TAG, "onNewIntent Extra -> Key: $key, Value: ${extras.get(key)}")
+        @Suppress("DEPRECATION")
+        val value = extras.get(key)
+        Log.d(TAG, "onNewIntent Extra -> Key: $key, Value: ${value?.toString() ?: "null"}")
       }
     }
 
