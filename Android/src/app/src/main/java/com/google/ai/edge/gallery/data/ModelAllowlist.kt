@@ -136,6 +136,15 @@ data class AllowedModel(
           visionAccelerator = Accelerator.NPU
         }
       }
+
+      // Prioritize GPU as the default (first element) if available.
+      if (accelerators.contains(Accelerator.GPU) && accelerators[0] != Accelerator.GPU) {
+        val list = accelerators.toMutableList()
+        list.remove(Accelerator.GPU)
+        list.add(0, Accelerator.GPU)
+        accelerators = list
+      }
+
       val npuOnly = accelerators.size == 1 && accelerators[0] == Accelerator.NPU
       configs =
         (if (runtimeType == RuntimeType.AICORE) {

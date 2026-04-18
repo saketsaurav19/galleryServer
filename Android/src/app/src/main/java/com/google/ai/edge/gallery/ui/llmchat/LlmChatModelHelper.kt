@@ -50,7 +50,15 @@ import kotlinx.coroutines.CoroutineScope
 
 private const val TAG = "AGLlmChatModelHelper"
 
-data class LlmModelInstance(val engine: Engine, var conversation: Conversation)
+data class LlmModelInstance(
+  val engine: Engine,
+  var conversation: Conversation,
+  val supportImage: Boolean,
+  val supportAudio: Boolean,
+  val systemInstruction: Contents?,
+  val tools: List<ToolProvider>,
+  val enableConversationConstrainedDecoding: Boolean,
+)
 
 object LlmChatModelHelper : LlmModelHelper {
   // Indexed by model name.
@@ -98,7 +106,7 @@ object LlmChatModelHelper : LlmModelHelper {
         Accelerator.GPU.label -> Backend.GPU()
         Accelerator.NPU.label ->
           Backend.NPU(nativeLibraryDir = context.applicationInfo.nativeLibraryDir)
-        else -> Backend.CPU()
+        else -> Backend.GPU()
       }
     Log.d(TAG, "Preferred backend: $preferredBackend")
 
@@ -141,7 +149,16 @@ object LlmChatModelHelper : LlmModelHelper {
           )
         )
       ExperimentalFlags.enableConversationConstrainedDecoding = false
-      model.instance = LlmModelInstance(engine = engine, conversation = conversation)
+      model.instance =
+        LlmModelInstance(
+          engine = engine,
+          conversation = conversation,
+          supportImage = supportImage,
+          supportAudio = supportAudio,
+          systemInstruction = systemInstruction,
+          tools = tools,
+          enableConversationConstrainedDecoding = enableConversationConstrainedDecoding,
+        )
     } catch (e: Exception) {
       onDone(cleanUpMediapipeTaskErrorMessage(e.message ?: "Unknown error"))
       return
@@ -152,6 +169,42 @@ object LlmChatModelHelper : LlmModelHelper {
   @OptIn(ExperimentalApi::class) // opt-in experimental flags
   override fun resetConversation(
     model: Model,
+    supportImage: Boolean,
+    supportAudio: Boolean,
+    systemInstruction: Contents?,
+    tools: List<ToolProvider>,
+    enableConversationConstrainedDecoding: Boolean,
+  ) {
+    val instance = model.instance as? LlmModelInstance ?: return
+    resetConversationInternal(
+      model,
+      instance,
+      supportImage,
+      supportAudio,
+      systemInstruction,
+      tools,
+      enableConversationConstrainedDecoding,
+    )
+  }
+
+  /** Resets conversation using last known parameters. */
+  fun resetConversation(model: Model) {
+    val instance = model.instance as? LlmModelInstance ?: return
+    resetConversationInternal(
+      model,
+      instance,
+      instance.supportImage,
+      instance.supportAudio,
+      instance.systemInstruction,
+      instance.tools,
+      instance.enableConversationConstrainedDecoding,
+    )
+  }
+
+  @OptIn(ExperimentalApi::class)
+  private fun resetConversationInternal(
+    model: Model,
+    instance: LlmModelInstance,
     supportImage: Boolean,
     supportAudio: Boolean,
     systemInstruction: Contents?,

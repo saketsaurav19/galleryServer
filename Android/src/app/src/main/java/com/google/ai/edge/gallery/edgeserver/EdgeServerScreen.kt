@@ -46,6 +46,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -184,6 +186,57 @@ fun EdgeServerScreen(modelManagerViewModel: ModelManagerViewModel, onBack: () ->
         }
       }
 
+      // ── Hardware Accelerator Row ──
+      Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+      ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+          Text(
+            text = "Hardware Accelerator",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+          )
+          Spacer(Modifier.height(12.dp))
+          val options = listOf("GPU", "CPU")
+          val selectedIndex = if (state.accelerator == "GPU") 0 else 1
+          TabRow(
+            selectedTabIndex = selectedIndex,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.primary,
+            indicator = {}, // Hide default indicator for a cleaner look
+            divider = {}
+          ) {
+            options.forEachIndexed { index, title ->
+              Tab(
+                selected = selectedIndex == index,
+                onClick = { EdgeServerManager.setAccelerator(title) },
+                modifier = Modifier
+                  .clip(RoundedCornerShape(8.dp))
+                  .background(
+                    if (selectedIndex == index) MaterialTheme.colorScheme.primary
+                    else Color.Transparent
+                  ),
+                text = {
+                  Text(
+                    text = title,
+                    color = if (selectedIndex == index) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (selectedIndex == index) FontWeight.Bold else FontWeight.Normal
+                  )
+                }
+              )
+            }
+          }
+          Text(
+            text = "GPU is recommended for best performance. Switch to CPU if encountering stability issues.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp),
+          )
+        }
+      }
+
       // ── Server toggle ──
       Card(
         modifier = Modifier.fillMaxWidth(),
@@ -269,6 +322,11 @@ fun EdgeServerScreen(modelManagerViewModel: ModelManagerViewModel, onBack: () ->
                     expanded = false
                     val task = modelManagerViewModel.getCustomTaskByTaskId(model.bestForTaskIds.firstOrNull() ?: "")?.task ?: modelManagerViewModel.uiState.value.tasks.firstOrNull { it.models.contains(model) }
                     task?.let {
+                      // Apply selected accelerator before init
+                      val updatedConfigs = model.configValues.toMutableMap()
+                      updatedConfigs[com.google.ai.edge.gallery.data.ConfigKeys.ACCELERATOR.label] = state.accelerator
+                      model.configValues = updatedConfigs
+
                       modelManagerViewModel.initializeModel(context, task = task, model = model, force = false, onDone = {
                         model.instance?.let {
                           EdgeServerManager.bindModel(model, model.runtimeHelper, model.displayName.ifEmpty { model.name })

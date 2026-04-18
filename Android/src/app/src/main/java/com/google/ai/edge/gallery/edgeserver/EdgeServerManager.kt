@@ -45,6 +45,7 @@ object EdgeServerManager {
     val host: String = EdgeServer.DEFAULT_HOST,
     val port: Int = EdgeServer.DEFAULT_PORT,
     val modelName: String = "",
+    val accelerator: String = "GPU",
   )
 
   private val _state = MutableStateFlow(ServerState())
@@ -134,6 +135,12 @@ object EdgeServerManager {
     server?.activeModelDisplayName = ""
     service?.clearActiveModel()
     _state.value = _state.value.copy(modelName = "")
+  }
+
+  /** Set the hardware accelerator for future model initializations. */
+  fun setAccelerator(acc: String) {
+    _state.value = _state.value.copy(accelerator = acc)
+    Log.i(TAG, "Accelerator set to: $acc")
   }
 
   private fun refreshState() {

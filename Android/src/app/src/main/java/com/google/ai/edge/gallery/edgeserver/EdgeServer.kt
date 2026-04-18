@@ -28,9 +28,9 @@ import java.io.PipedInputStream
 import java.io.PipedOutputStream
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.locks.ReentrantLock
 
 private const val TAG = "EdgeServer"
 
@@ -70,7 +70,7 @@ class EdgeServer(
    */
   @Volatile var modelFinder: (() -> Unit)? = null
 
-  private val inferenceLock = ReentrantLock()
+  private val inferenceLock = Semaphore(1)
   private val gson = Gson()
 
   // ───────────────────────────────────────────────────────────────────────
@@ -176,6 +176,11 @@ class EdgeServer(
     val requestId = "chatcmpl-${UUID.randomUUID().toString().take(12)}"
     val modelId = activeModelDisplayName.ifEmpty { model.name }
 
+    // Reset conversation context to clear per-request history, since we are providing the full prompt history.
+    if (helper is com.google.ai.edge.gallery.ui.llmchat.LlmChatModelHelper) {
+      helper.resetConversation(model)
+    }
+
     return if (stream) {
       handleStreamingResponse(model, helper, prompt, requestId, modelId)
     } else {
@@ -236,7 +241,7 @@ class EdgeServer(
     model: Model, helper: LlmModelHelper, prompt: String,
     requestId: String, modelId: String,
   ): Response {
-    if (!inferenceLock.tryLock(5, TimeUnit.SECONDS)) {
+    if (!inferenceLock.tryAcquire(1, 5, TimeUnit.SECONDS)) {
       return errorResponse(429, "Server busy. Try again later.")
     }
 
@@ -284,7 +289,7 @@ class EdgeServer(
         Log.e(TAG, "Inference error", e)
       } finally {
         try { pipedOut.close() } catch (_: Exception) {}
-        inferenceLock.unlock()
+        inferenceLock.release()
       }
     }.start()
 
@@ -302,7 +307,7 @@ class EdgeServer(
     model: Model, helper: LlmModelHelper, prompt: String,
     requestId: String, modelId: String,
   ): Response {
-    if (!inferenceLock.tryLock(5, TimeUnit.SECONDS)) {
+    if (!inferenceLock.tryAcquire(1, 5, TimeUnit.SECONDS)) {
       return errorResponse(429, "Server busy. Try again later.")
     }
     try {
@@ -336,7 +341,7 @@ class EdgeServer(
       }
       return newFixedLengthResponse(Response.Status.OK, MIME_JSON, json).applyCors()
     } finally {
-      inferenceLock.unlock()
+      inferenceLock.release()
     }
   }
 

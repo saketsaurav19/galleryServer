@@ -509,6 +509,11 @@ fun GalleryNavHost(
               ?: modelManagerViewModel.uiState.value.tasks.firstOrNull { it.models.contains(firstModel) }
 
             task?.let {
+              // Force selected accelerator for Edge Server auto-discovery
+              val updatedConfigs = firstModel.configValues.toMutableMap()
+              updatedConfigs[com.google.ai.edge.gallery.data.ConfigKeys.ACCELERATOR.label] = EdgeServerManager.state.value.accelerator
+              firstModel.configValues = updatedConfigs
+
               // Note: modelManagerViewModel.initializeModel launches a coroutine but does not block.
               // To avoid returning false for the first auto-discovered `/health` request, the server
               // uses a polling wait in `tryAutoDiscoverModel` up to 90s, waiting for instance to be set.
