@@ -31,7 +31,11 @@ jobs:
 
       - name: Build APK
         working-directory: Android/src
-        run: ./gradlew assembleRelease -PdynamicVersionCode=${{ github.run_number }} -PdynamicVersionNameSuffix=-PR${{ github.event.pull_request.number || 'main' }}-Run${{ github.run_number }}
+        run: |
+          ./gradlew assembleRelease \
+            -PdynamicVersionCode=${{ github.run_number }} \
+            -PdynamicVersionName=1.0.${{ github.run_number }} \
+            -PdynamicVersionNameSuffix=-Run${{ github.run_number }}
 
       # 🔍 Debug (optional but useful)
       - name: List APK files

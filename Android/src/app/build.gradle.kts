@@ -40,8 +40,9 @@ android {
     val dynamicVersionCode = project.findProperty("dynamicVersionCode") as? String
     versionCode = dynamicVersionCode?.toIntOrNull() ?: 23
 
+    val dynamicVersionName = project.findProperty("dynamicVersionName") as? String
     val dynamicVersionNameSuffix = project.findProperty("dynamicVersionNameSuffix") as? String
-    versionName = "1.0.11" + (dynamicVersionNameSuffix ?: "")
+    versionName = (dynamicVersionName ?: "1.0.11") + (dynamicVersionNameSuffix ?: "")
 
 
 

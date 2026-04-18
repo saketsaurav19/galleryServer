@@ -37,9 +37,11 @@ import kotlinx.coroutines.runBlocking
 
 private const val TAG = "AGAgentTools"
 
-class AgentTools() : ToolSet {
+class AgentTools(
+  private val skillRepository: SkillRepository,
+  private val dataStoreRepository: DataStoreRepository,
+) : ToolSet {
   lateinit var context: Context
-  lateinit var skillManagerViewModel: SkillManagerViewModel
 
   private val _actionChannel = Channel<AgentAction>(Channel.UNLIMITED)
   val actionChannel: ReceiveChannel<AgentAction> = _actionChannel
@@ -52,7 +54,7 @@ class AgentTools() : ToolSet {
     @ToolParam(description = "The name of the skill to load.") skillName: String
   ): Map<String, String> {
     return runBlocking(Dispatchers.Default) {
-      val skills = skillManagerViewModel.getSelectedSkills()
+      val skills = skillRepository.getSelectedSkills()
       val skill = skills.find { it.name == skillName.trim() }
       val skillContent =
         if (skill != null) {
@@ -102,7 +104,7 @@ class AgentTools() : ToolSet {
           "\n- skillName: ${skillName}\n- scriptName: ${scriptName}\n- data: ${data}\n",
       )
 
-      val skills = skillManagerViewModel.getSelectedSkills()
+      val skills = skillRepository.getSelectedSkills()
       val skill = skills.find { it.name == skillName.trim() }
 
       if (skill == null) {
@@ -122,7 +124,7 @@ class AgentTools() : ToolSet {
       var secret = ""
       if (skill.requireSecret) {
         val savedSecret =
-          skillManagerViewModel.dataStoreRepository.readSecret(
+          dataStoreRepository.readSecret(
             key = getSkillSecretKey(skillName = skillName)
           )
         if (savedSecret == null || savedSecret.isEmpty()) {
@@ -137,7 +139,7 @@ class AgentTools() : ToolSet {
           _actionChannel.send(action)
           secret = action.result.await()
           if (secret.isNotEmpty()) {
-            skillManagerViewModel.dataStoreRepository.saveSecret(
+            dataStoreRepository.saveSecret(
               key = getSkillSecretKey(skillName = skillName),
               value = secret,
             )
@@ -150,9 +152,8 @@ class AgentTools() : ToolSet {
         }
       }
 
-      // Get the url for the skill.
       val url =
-        skillManagerViewModel.getJsSkillUrl(skillName = skillName, scriptName = scriptName)
+        skillRepository.getJsSkillUrl(skillName = skillName, scriptName = scriptName)
           ?: return@runBlocking mapOf(
             "result" to "JS Skill URL not set properly or skill not found"
           )
@@ -205,7 +206,7 @@ class AgentTools() : ToolSet {
         if (webview != null) {
           Log.d(TAG, "Got an webview response.")
           val webviewUrl =
-            skillManagerViewModel.getJsSkillWebviewUrl(
+            skillRepository.getJsSkillWebviewUrl(
               skillName = skillName,
               url = webview.url ?: "",
             )

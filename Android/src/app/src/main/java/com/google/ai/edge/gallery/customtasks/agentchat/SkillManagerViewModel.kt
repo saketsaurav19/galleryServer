@@ -133,6 +133,7 @@ class SkillManagerViewModel
 @Inject
 constructor(
   val dataStoreRepository: DataStoreRepository,
+  private val skillRepository: SkillRepository,
   @ApplicationContext private val context: Context,
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(SkillManagerUiState())
@@ -148,86 +149,17 @@ constructor(
   fun loadSkills(onDone: () -> Unit) {
     if (!skillLoaded) {
       setLoading(true)
-      viewModelScope.launch(Dispatchers.IO) {
-        Log.d(TAG, "Loading skills index...")
+      viewModelScope.launch {
+        val finalSkills = skillRepository.loadSkills()
 
-        // 1. Load all skills from DataStore.
-        val allDataStoreSkills = dataStoreRepository.getAllSkills()
-        val dataStoreBuiltInSkills = allDataStoreSkills.filter { it.builtIn }
-        val dataStoreCustomSkills = allDataStoreSkills.filter { !it.builtIn }
-        Log.d(
-          TAG,
-          "data store built-in skills:\n${dataStoreBuiltInSkills.joinToString(separator = "\n") { it.name }}",
-        )
-        Log.d(
-          TAG,
-          "data store custom skills:\n${dataStoreCustomSkills.joinToString(separator = "\n") { it.name }}",
-        )
-
-        // 2. Keep track of the selection state of existing built-in skills.
-        val builtInSelectionMap = dataStoreBuiltInSkills.associate { it.name to it.selected }
-        Log.d(TAG, "data store built-in skills selection map: $builtInSelectionMap")
-
-        // 3. Read and parse SKILL.md files from assets/skills directories.
-        val builtInSkills = mutableListOf<Skill>()
-        try {
-          val skillAssetDirs = context.assets.list("skills") ?: emptyArray()
-          for (dirName in skillAssetDirs) {
-            val skillMdPath = "skills/$dirName/SKILL.md"
-            try {
-              context.assets.open(skillMdPath).use { inputStream ->
-                val mdContent = inputStream.bufferedReader().use { it.readText() }
-                val (skillProto, errors) =
-                  convertSkillMdToProto(
-                    mdContent,
-                    builtIn = true,
-                    // Selection state will be reconciled with DataStore later
-                    selected = true,
-                    importDir = "assets/skills/$dirName",
-                  )
-                if (errors.isNotEmpty()) {
-                  Log.w(TAG, "Error parsing asset skill $dirName: ${errors.joinToString(", ")}")
-                } else {
-                  skillProto?.let {
-                    // Apply the previous selection state if it exists, otherwise default to
-                    // true.
-                    val selectedState = builtInSelectionMap[it.name] ?: true
-                    builtInSkills.add(it.toBuilder().setSelected(selectedState).build())
-                    Log.d(TAG, "Added built-in skill: ${it.name}")
-                  }
-                }
-              }
-            } catch (e: Exception) {
-              Log.w(TAG, "SKILL.md not found or error reading for asset skill $dirName", e)
-            }
-          }
-        } catch (e: Exception) {
-          Log.e(TAG, "Error listing assets/skills", e)
-        }
-        Log.d(
-          TAG,
-          "Final built-in skills:\n${builtInSkills.joinToString(separator = "\n") { "${it.name}(${it.selected})" }}",
-        )
-
-        // 4. Combine the updated built-in skills with the existing custom skills.
-        val finalSkills = builtInSkills.toMutableList()
-        for (customSkill in dataStoreCustomSkills) {
-          if (!finalSkills.any { it.name == customSkill.name }) {
-            finalSkills.add(customSkill)
-          }
-        }
-
-        // 5. Update the DataStore with the combined list of skills.
-        dataStoreRepository.setSkills(finalSkills)
-
-        // 6. Update UI State with the final set of skills.
+        // Update UI State with the final set of skills.
         _uiState.update { currentState ->
           currentState.copy(skills = finalSkills.map { SkillState(skill = it) })
         }
 
         setLoading(false)
         skillLoaded = true
-        withContext(Dispatchers.Default) { onDone() }
+        onDone()
       }
     } else {
       onDone()
@@ -667,69 +599,23 @@ constructor(
   }
 
   fun getSelectedSkills(): List<Skill> {
-    return _uiState.value.skills.filter { it.skill.selected }.map { it.skill }
+    return skillRepository.getSelectedSkills()
   }
 
   fun getSystemPrompt(baseSystemPrompt: String): Contents {
-    // Replace ___SKILLS___ with the following skills list:
-    //
-    // # Skill name: skill_name_1
-    // ##Description: skill_description_1
-    // ------
-    // Skill name: skill_name_2
-    // Description: skill_description_2
-    // ------
-    // Skill name: skill_name_3
-    // Description: skill_description_3
-    // ------
-    val selectedSkillsNamesAndDescriptions = getSelectedSkillsNamesAndDescriptions()
-    val systemPrompt = baseSystemPrompt.replace("___SKILLS___", selectedSkillsNamesAndDescriptions)
-    Log.d(TAG, "System prompt:\n$systemPrompt")
-    return Contents.of(systemPrompt)
+    return skillRepository.getSystemPrompt(baseSystemPrompt)
   }
 
   fun getSkill(name: String): Skill? {
-    return _uiState.value.skills.firstOrNull { it.skill.name == name }?.skill
+    return skillRepository.getSkill(name)
   }
 
   fun getJsSkillUrl(skillName: String, scriptName: String): String? {
-    val skill = getSkill(name = skillName) ?: return null
-    var baseUrl = ""
-    // Construct a local URL for imported skill and built-in skills.
-    if (skill.importDirName.isNotEmpty()) {
-      baseUrl = "$LOCAL_URL_BASE/${skill.importDirName}"
-    }
-    // Use skill.skillUrl if set.
-    else if (skill.skillUrl.isNotEmpty()) {
-      baseUrl = skill.skillUrl
-    }
-    if (baseUrl.isEmpty()) {
-      return null
-    }
-    return "$baseUrl/scripts/$scriptName"
+    return skillRepository.getJsSkillUrl(skillName, scriptName)
   }
 
   fun getJsSkillWebviewUrl(skillName: String, url: String): String {
-    val skill = getSkill(name = skillName) ?: return url
-
-    // Return the url if it is an absolute url.
-    if (url.startsWith("http")) {
-      return url
-    }
-
-    var baseUrl = ""
-    // Construct a local URL for imported skill.
-    if (skill.importDirName.isNotEmpty()) {
-      baseUrl = "$LOCAL_URL_BASE/${skill.importDirName}"
-    }
-    // Use skill.skillUrl if set.
-    else if (skill.skillUrl.isNotEmpty()) {
-      baseUrl = skill.skillUrl
-    }
-    if (baseUrl.isEmpty()) {
-      return url
-    }
-    return "$baseUrl/assets/$url"
+    return skillRepository.getJsSkillWebviewUrl(skillName, url)
   }
 
   fun getSelectedSkillsNamesAndDescriptions(): String {

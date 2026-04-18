@@ -32,11 +32,14 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoSet
-import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
-class AgentChatTask @Inject constructor() : CustomTask {
-  private val agentTools = AgentTools()
+class AgentChatTask @Inject constructor(
+  private val skillRepository: SkillRepository,
+  private val dataStoreRepository: DataStoreRepository,
+) : CustomTask {
+  private val agentTools = AgentTools(skillRepository, dataStoreRepository)
 
   override val task: Task =
     Task(
@@ -77,7 +80,8 @@ class AgentChatTask @Inject constructor() : CustomTask {
     model: Model,
     onDone: (String) -> Unit,
   ) {
-    agentTools.skillManagerViewModel.loadSkills {
+    coroutineScope.launch {
+      skillRepository.loadSkills()
       LlmChatModelHelper.initialize(
         context = context,
         model = model,
@@ -85,10 +89,10 @@ class AgentChatTask @Inject constructor() : CustomTask {
         supportAudio = true,
         onDone = onDone,
         systemInstruction =
-          if (agentTools.skillManagerViewModel.getSelectedSkills().isEmpty()) {
+          if (skillRepository.getSelectedSkills().isEmpty()) {
             null
           } else {
-            agentTools.skillManagerViewModel.getSystemPrompt(task.defaultSystemPrompt)
+            skillRepository.getSystemPrompt(task.defaultSystemPrompt)
           },
         tools = listOf(tool(agentTools)),
         enableConversationConstrainedDecoding = true,
@@ -122,7 +126,10 @@ class AgentChatTask @Inject constructor() : CustomTask {
 internal object AgentChatTaskModule {
   @Provides
   @IntoSet
-  fun provideTask(): CustomTask {
-    return AgentChatTask()
+  fun provideTask(
+    skillRepository: SkillRepository,
+    dataStoreRepository: DataStoreRepository,
+  ): CustomTask {
+    return AgentChatTask(skillRepository, dataStoreRepository)
   }
 }
