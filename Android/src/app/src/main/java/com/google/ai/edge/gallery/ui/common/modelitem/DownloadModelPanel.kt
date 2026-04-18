@@ -63,6 +63,7 @@ fun DownloadModelPanel(
   onBenchmarkClicked: () -> Unit,
   modifier: Modifier = Modifier,
   showBenchmarkButton: Boolean = false,
+  initializationStatus: ModelInitializationStatus? = null,
 ) {
   val downloadSucceeded = downloadStatus?.status == ModelDownloadStatusType.SUCCEEDED
   with(sharedTransitionScope) {
@@ -126,6 +127,7 @@ fun DownloadModelPanel(
         downloadStatus = downloadStatus,
         enabled = isDownloadButtonEnabled(downloadStatus, model),
         modelManagerViewModel = modelManagerViewModel,
+        initializationStatus = initializationStatus,
         onClicked = onTryItClicked,
         compact = !isExpanded,
         modifier =

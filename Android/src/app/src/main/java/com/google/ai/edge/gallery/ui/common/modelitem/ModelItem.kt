@@ -186,6 +186,7 @@ fun ModelItem(
                 )
                 .padding(top = if (targetState) 12.dp else 0.dp),
             modelManagerViewModel = modelManagerViewModel,
+            initializationStatus = modelManagerUiState.modelInitializationStatus[model.name],
             isExpanded = targetState,
             onTryItClicked = { onModelClicked(model) },
             onBenchmarkClicked = { onBenchmarkClicked(model) },

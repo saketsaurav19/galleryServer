@@ -44,6 +44,7 @@ import androidx.compose.material.icons.rounded.Error
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -82,6 +83,8 @@ import com.google.ai.edge.gallery.data.RuntimeType
 import com.google.ai.edge.gallery.data.Task
 import com.google.ai.edge.gallery.ui.common.tos.GemmaTermsOfUseDialog
 import com.google.ai.edge.gallery.ui.common.tos.TosViewModel
+import com.google.ai.edge.gallery.ui.modelmanager.ModelInitializationStatus
+import com.google.ai.edge.gallery.ui.modelmanager.ModelInitializationStatusType
 import com.google.ai.edge.gallery.ui.modelmanager.ModelManagerViewModel
 import com.google.ai.edge.gallery.ui.modelmanager.TokenRequestResultType
 import com.google.ai.edge.gallery.ui.modelmanager.TokenStatus
@@ -133,6 +136,7 @@ fun DownloadAndTryButton(
   onClicked: () -> Unit,
   modifier: Modifier = Modifier,
   tosViewModel: TosViewModel = hiltViewModel(),
+  initializationStatus: ModelInitializationStatus? = null,
   modifierWhenExpanded: Modifier = Modifier,
   compact: Boolean = false,
   canShowTryIt: Boolean = true,
@@ -369,19 +373,21 @@ fun DownloadAndTryButton(
         ),
       contentPadding = PaddingValues(horizontal = 12.dp),
       onClick = {
-        if (!enabled || checkingToken) {
+        if (!enabled || checkingToken || initializationStatus?.status == ModelInitializationStatusType.INITIALIZING) {
           return@Button
         }
 
-        // Check TOS before downloading.
-        if (
-          model.url.startsWith("https://dl.google.com/google-ai-edge-gallery/") &&
-            MODEL_NAMES_TO_SHOW_GEMMA_LICENSES.contains(model.name) &&
-            !tosViewModel.getIsGemmaTermsOfUseAccepted()
-        ) {
-          showGemmaTermsOfUseDialog = true
-        } else {
-          checkMemoryAndClickDownloadButton()
+        scope.launch {
+          // Check TOS before downloading.
+          if (
+            model.url.startsWith("https://dl.google.com/google-ai-edge-gallery/") &&
+              MODEL_NAMES_TO_SHOW_GEMMA_LICENSES.contains(model.name) &&
+              !tosViewModel.getIsGemmaTermsOfUseAccepted()
+          ) {
+            showGemmaTermsOfUseDialog = true
+          } else {
+            checkMemoryAndClickDownloadButton()
+          }
         }
       },
     ) {
@@ -400,32 +406,47 @@ fun DownloadAndTryButton(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
       ) {
-        Icon(
-          if (needToDownloadFirst) {
-            Icons.Outlined.FileDownload
-          } else {
-            Icons.AutoMirrored.Rounded.ArrowForward
-          },
-          contentDescription = null,
-          tint = textColor,
-        )
+        if (initializationStatus?.status == ModelInitializationStatusType.INITIALIZING) {
+          CircularProgressIndicator(
+            modifier = Modifier.size(20.dp),
+            strokeWidth = 2.dp,
+            color = textColor,
+          )
+          if (!compact) {
+            Text(
+              "Initializing...",
+              color = textColor,
+              style = MaterialTheme.typography.titleMedium,
+            )
+          }
+        } else {
+          Icon(
+            if (needToDownloadFirst) {
+              Icons.Outlined.FileDownload
+            } else {
+              Icons.AutoMirrored.Rounded.ArrowForward
+            },
+            contentDescription = null,
+            tint = textColor,
+          )
 
-        if (!compact) {
-          if (needToDownloadFirst) {
-            Text(
-              stringResource(R.string.download),
-              color = textColor,
-              style = MaterialTheme.typography.titleMedium,
-            )
-          } else if (canShowTryIt) {
-            Text(
-              stringResource(R.string.try_it),
-              color = textColor,
-              style = MaterialTheme.typography.titleMedium,
-              maxLines = 1,
-              autoSize =
-                TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 16.sp, stepSize = 1.sp),
-            )
+          if (!compact) {
+            if (needToDownloadFirst) {
+              Text(
+                stringResource(R.string.download),
+                color = textColor,
+                style = MaterialTheme.typography.titleMedium,
+              )
+            } else if (canShowTryIt) {
+              Text(
+                stringResource(R.string.try_it),
+                color = textColor,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                autoSize =
+                  TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 16.sp, stepSize = 1.sp),
+              )
+            }
           }
         }
       }

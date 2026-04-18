@@ -371,12 +371,14 @@ constructor(
       curModelDownloadStatus.remove(model.name)
 
       // Update data store.
-      val importedModels = dataStoreRepository.readImportedModels().toMutableList()
-      val importedModelIndex = importedModels.indexOfFirst { it.fileName == model.name }
-      if (importedModelIndex >= 0) {
-        importedModels.removeAt(importedModelIndex)
+      viewModelScope.launch(Dispatchers.IO) {
+        val importedModels = dataStoreRepository.readImportedModels().toMutableList()
+        val importedModelIndex = importedModels.indexOfFirst { it.fileName == model.name }
+        if (importedModelIndex >= 0) {
+          importedModels.removeAt(importedModelIndex)
+        }
+        dataStoreRepository.saveImportedModels(importedModels = importedModels)
       }
-      dataStoreRepository.saveImportedModels(importedModels = importedModels)
     }
     val newUiState =
       uiState.value.copy(
@@ -549,7 +551,9 @@ constructor(
         newHistory.removeAt(newHistory.size - 1)
       }
       _uiState.update { _uiState.value.copy(textInputHistory = newHistory) }
-      dataStoreRepository.saveTextInputHistory(_uiState.value.textInputHistory)
+      viewModelScope.launch(Dispatchers.IO) {
+        dataStoreRepository.saveTextInputHistory(_uiState.value.textInputHistory)
+      }
     } else {
       promoteTextInputHistoryItem(text)
     }
@@ -562,7 +566,9 @@ constructor(
       newHistory.removeAt(index)
       newHistory.add(0, text)
       _uiState.update { _uiState.value.copy(textInputHistory = newHistory) }
-      dataStoreRepository.saveTextInputHistory(_uiState.value.textInputHistory)
+      viewModelScope.launch(Dispatchers.IO) {
+        dataStoreRepository.saveTextInputHistory(_uiState.value.textInputHistory)
+      }
     }
   }
 
@@ -572,21 +578,25 @@ constructor(
       val newHistory = uiState.value.textInputHistory.toMutableList()
       newHistory.removeAt(index)
       _uiState.update { _uiState.value.copy(textInputHistory = newHistory) }
-      dataStoreRepository.saveTextInputHistory(_uiState.value.textInputHistory)
+      viewModelScope.launch(Dispatchers.IO) {
+        dataStoreRepository.saveTextInputHistory(_uiState.value.textInputHistory)
+      }
     }
   }
 
   fun clearTextInputHistory() {
     _uiState.update { _uiState.value.copy(textInputHistory = mutableListOf()) }
-    dataStoreRepository.saveTextInputHistory(_uiState.value.textInputHistory)
+    viewModelScope.launch(Dispatchers.IO) {
+      dataStoreRepository.saveTextInputHistory(_uiState.value.textInputHistory)
+    }
   }
 
-  fun readThemeOverride(): Theme {
+  suspend fun readThemeOverride(): Theme {
     return dataStoreRepository.readTheme()
   }
 
   fun saveThemeOverride(theme: Theme) {
-    dataStoreRepository.saveTheme(theme = theme)
+    viewModelScope.launch(Dispatchers.IO) { dataStoreRepository.saveTheme(theme = theme) }
   }
 
   fun getModelUrlResponse(model: Model, accessToken: String? = null): Int {
@@ -673,17 +683,19 @@ constructor(
     }
 
     // Add to data store.
-    val importedModels = dataStoreRepository.readImportedModels().toMutableList()
-    val importedModelIndex = importedModels.indexOfFirst { info.fileName == it.fileName }
-    if (importedModelIndex >= 0) {
-      Log.d(TAG, "duplicated imported model found in data store. Removing it first")
-      importedModels.removeAt(importedModelIndex)
+    viewModelScope.launch(Dispatchers.IO) {
+      val importedModels = dataStoreRepository.readImportedModels().toMutableList()
+      val importedModelIndex = importedModels.indexOfFirst { info.fileName == it.fileName }
+      if (importedModelIndex >= 0) {
+        Log.d(TAG, "duplicated imported model found in data store. Removing it first")
+        importedModels.removeAt(importedModelIndex)
+      }
+      importedModels.add(info)
+      dataStoreRepository.saveImportedModels(importedModels = importedModels)
     }
-    importedModels.add(info)
-    dataStoreRepository.saveImportedModels(importedModels = importedModels)
   }
 
-  fun getTokenStatusAndData(): TokenStatusAndData {
+  suspend fun getTokenStatusAndData(): TokenStatusAndData {
     // Try to load token data from DataStore.
     var tokenStatus = TokenStatus.NOT_STORED
     Log.d(TAG, "Reading token data from data store...")
@@ -992,13 +1004,14 @@ constructor(
         processTasks()
 
         // Update UI state.
+        val newState = createUiState()
         _uiState.update {
-          createUiState()
-            .copy(
-              loadingModelAllowlist = false,
-              tasks = curTasks,
-              tasksByCategory = groupTasksByCategory(),
-            )
+          newState.copy(
+            loadingModelAllowlist = false,
+            tasks = curTasks,
+            loadingModelAllowlistError = "",
+            tasksByCategory = groupTasksByCategory(),
+          )
         }
 
         // Process pending downloads.
@@ -1015,14 +1028,16 @@ constructor(
   fun clearLoadModelAllowlistError() {
     val curTasks = getActiveCustomTasks().map { it.task }
     processTasks()
-    _uiState.update {
-      createUiState()
-        .copy(
+    viewModelScope.launch(Dispatchers.IO) {
+      val newState = createUiState()
+      _uiState.update {
+        newState.copy(
           loadingModelAllowlist = false,
           tasks = curTasks,
           loadingModelAllowlistError = "",
           tasksByCategory = groupTasksByCategory(),
         )
+      }
     }
   }
 
@@ -1084,7 +1099,7 @@ constructor(
     )
   }
 
-  private fun createUiState(): ModelManagerUiState {
+  private suspend fun createUiState(): ModelManagerUiState {
     val modelDownloadStatus: MutableMap<String, ModelDownloadStatus> = mutableMapOf()
     val modelInstances: MutableMap<String, ModelInitializationStatus> = mutableMapOf()
     val tasks: MutableMap<String, Task> = mutableMapOf()

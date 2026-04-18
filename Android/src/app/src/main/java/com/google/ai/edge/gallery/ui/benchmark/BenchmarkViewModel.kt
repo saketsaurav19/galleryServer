@@ -84,10 +84,12 @@ constructor(
 
   init {
     // Load results from storage.
-    val storedResults = dataStoreRepository.getAllBenchmarkResults()
-    Log.d(TAG, "Loaded ${storedResults.size} benchmark results")
-    setBenchmarkResults(results = storedResults)
-    collapseAll()
+    viewModelScope.launch(Dispatchers.IO) {
+      val storedResults = dataStoreRepository.getAllBenchmarkResults()
+      Log.d(TAG, "Loaded ${storedResults.size} benchmark results")
+      setBenchmarkResults(results = storedResults)
+      collapseAll()
+    }
   }
 
   @OptIn(ExperimentalApi::class)
@@ -237,7 +239,9 @@ constructor(
     _uiState.update { _uiState.value.copy(results = newResults) }
 
     // Save to storage.
-    dataStoreRepository.addBenchmarkResult(result)
+    viewModelScope.launch(Dispatchers.IO) {
+      dataStoreRepository.addBenchmarkResult(result)
+    }
 
     return newId
   }
@@ -270,7 +274,9 @@ constructor(
       }
 
       // Update storage.
-      dataStoreRepository.deleteBenchmarkResult(index = index)
+      viewModelScope.launch(Dispatchers.IO) {
+        dataStoreRepository.deleteBenchmarkResult(index = index)
+      }
     } else {
       Log.w(TAG, "Benchmark result with id $id not found.")
     }

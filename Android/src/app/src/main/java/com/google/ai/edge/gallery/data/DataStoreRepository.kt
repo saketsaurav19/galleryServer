@@ -33,82 +33,82 @@ import kotlinx.coroutines.runBlocking
 
 // TODO(b/423700720): Change to async (suspend) functions
 interface DataStoreRepository {
-  fun saveTextInputHistory(history: List<String>)
+  suspend fun saveTextInputHistory(history: List<String>)
 
-  fun readTextInputHistory(): List<String>
+  suspend fun readTextInputHistory(): List<String>
 
-  fun saveTheme(theme: Theme)
+  suspend fun saveTheme(theme: Theme)
 
-  fun readTheme(): Theme
+  suspend fun readTheme(): Theme
 
-  fun saveSecret(key: String, value: String)
+  suspend fun saveSecret(key: String, value: String)
 
-  fun readSecret(key: String): String?
+  suspend fun readSecret(key: String): String?
 
-  fun deleteSecret(key: String)
+  suspend fun deleteSecret(key: String)
 
-  fun saveAccessTokenData(accessToken: String, refreshToken: String, expiresAt: Long)
+  suspend fun saveAccessTokenData(accessToken: String, refreshToken: String, expiresAt: Long)
 
-  fun clearAccessTokenData()
+  suspend fun clearAccessTokenData()
 
-  fun readAccessTokenData(): AccessTokenData?
+  suspend fun readAccessTokenData(): AccessTokenData?
 
-  fun saveImportedModels(importedModels: List<ImportedModel>)
+  suspend fun saveImportedModels(importedModels: List<ImportedModel>)
 
-  fun readImportedModels(): List<ImportedModel>
+  suspend fun readImportedModels(): List<ImportedModel>
 
-  fun isTosAccepted(): Boolean
+  suspend fun isTosAccepted(): Boolean
 
-  fun acceptTos()
+  suspend fun acceptTos()
 
-  fun isGemmaTermsOfUseAccepted(): Boolean
+  suspend fun isGemmaTermsOfUseAccepted(): Boolean
 
-  fun acceptGemmaTermsOfUse()
+  suspend fun acceptGemmaTermsOfUse()
 
-  fun getHasRunTinyGarden(): Boolean
+  suspend fun getHasRunTinyGarden(): Boolean
 
-  fun setHasRunTinyGarden(hasRun: Boolean)
+  suspend fun setHasRunTinyGarden(hasRun: Boolean)
 
-  fun addCutout(cutout: Cutout)
+  suspend fun addCutout(cutout: Cutout)
 
-  fun getAllCutouts(): List<Cutout>
+  suspend fun getAllCutouts(): List<Cutout>
 
-  fun setCutout(newCutout: Cutout)
+  suspend fun setCutout(newCutout: Cutout)
 
-  fun setCutouts(cutouts: List<Cutout>)
+  suspend fun setCutouts(cutouts: List<Cutout>)
 
-  fun setHasSeenBenchmarkComparisonHelp(seen: Boolean)
+  suspend fun setHasSeenBenchmarkComparisonHelp(seen: Boolean)
 
-  fun getHasSeenBenchmarkComparisonHelp(): Boolean
+  suspend fun getHasSeenBenchmarkComparisonHelp(): Boolean
 
-  fun addBenchmarkResult(result: BenchmarkResult)
+  suspend fun addBenchmarkResult(result: BenchmarkResult)
 
-  fun getAllBenchmarkResults(): List<BenchmarkResult>
+  suspend fun getAllBenchmarkResults(): List<BenchmarkResult>
 
-  fun deleteBenchmarkResult(index: Int)
+  suspend fun deleteBenchmarkResult(index: Int)
 
-  fun addSkill(skill: Skill)
+  suspend fun addSkill(skill: Skill)
 
-  fun setSkills(skills: List<Skill>)
+  suspend fun setSkills(skills: List<Skill>)
 
-  fun setSkillSelected(skill: Skill, selected: Boolean)
+  suspend fun setSkillSelected(skill: Skill, selected: Boolean)
 
-  fun setAllSkillsSelected(selected: Boolean)
+  suspend fun setAllSkillsSelected(selected: Boolean)
 
-  fun getAllSkills(): List<Skill>
+  suspend fun getAllSkills(): List<Skill>
 
-  fun deleteSkill(name: String)
+  suspend fun deleteSkill(name: String)
 
   suspend fun deleteSkills(names: Set<String>)
 
   /** Records that a promo with the specified ID has been viewed. */
-  fun addViewedPromoId(promoId: String)
+  suspend fun addViewedPromoId(promoId: String)
 
   /** Removes a viewed promo record. */
-  fun removeViewedPromoId(promoId: String)
+  suspend fun removeViewedPromoId(promoId: String)
 
   /** Returns whether a promo with the specified ID has been viewed. */
-  fun hasViewedPromo(promoId: String): Boolean
+  suspend fun hasViewedPromo(promoId: String): Boolean
 }
 
 /** Repository for managing data using Proto DataStore. */
@@ -119,283 +119,220 @@ class DefaultDataStoreRepository(
   private val benchmarkResultsDataStore: DataStore<BenchmarkResults>,
   private val skillsDataStore: DataStore<Skills>,
 ) : DataStoreRepository {
-  override fun saveTextInputHistory(history: List<String>) {
-    runBlocking {
-      dataStore.updateData { settings ->
-        settings.toBuilder().clearTextInputHistory().addAllTextInputHistory(history).build()
-      }
+  override suspend fun saveTextInputHistory(history: List<String>) {
+    dataStore.updateData { settings ->
+      settings.toBuilder().clearTextInputHistory().addAllTextInputHistory(history).build()
     }
   }
 
-  override fun readTextInputHistory(): List<String> {
-    return runBlocking {
-      val settings = dataStore.data.first()
-      settings.textInputHistoryList
+  override suspend fun readTextInputHistory(): List<String> {
+    val settings = dataStore.data.first()
+    return settings.textInputHistoryList
+  }
+
+  override suspend fun saveTheme(theme: Theme) {
+    dataStore.updateData { settings -> settings.toBuilder().setTheme(theme).build() }
+  }
+
+  override suspend fun readTheme(): Theme {
+    val settings = dataStore.data.first()
+    val curTheme = settings.theme
+    // Use "auto" as the default theme.
+    return if (curTheme == Theme.THEME_UNSPECIFIED) Theme.THEME_AUTO else curTheme
+  }
+
+  override suspend fun saveSecret(key: String, value: String) {
+    userDataDataStore.updateData { userData ->
+      userData.toBuilder().putSecrets(key, value).build()
     }
   }
 
-  override fun saveTheme(theme: Theme) {
-    runBlocking {
-      dataStore.updateData { settings -> settings.toBuilder().setTheme(theme).build() }
+  override suspend fun readSecret(key: String): String? {
+    return userDataDataStore.data.first().secretsMap[key]
+  }
+
+  override suspend fun deleteSecret(key: String) {
+    userDataDataStore.updateData { userData -> userData.toBuilder().removeSecrets(key).build() }
+  }
+
+  override suspend fun saveAccessTokenData(accessToken: String, refreshToken: String, expiresAt: Long) {
+    // Clear the entry in old data store.
+    dataStore.updateData { settings ->
+      settings.toBuilder().setAccessTokenData(AccessTokenData.getDefaultInstance()).build()
+    }
+
+    userDataDataStore.updateData { userData ->
+      userData
+        .toBuilder()
+        .setAccessTokenData(
+          AccessTokenData.newBuilder()
+            .setAccessToken(accessToken)
+            .setRefreshToken(refreshToken)
+            .setExpiresAtMs(expiresAt)
+            .build()
+        )
+        .build()
     }
   }
 
-  override fun readTheme(): Theme {
-    return runBlocking {
-      val settings = dataStore.data.first()
-      val curTheme = settings.theme
-      // Use "auto" as the default theme.
-      if (curTheme == Theme.THEME_UNSPECIFIED) Theme.THEME_AUTO else curTheme
+  override suspend fun clearAccessTokenData() {
+    dataStore.updateData { settings -> settings.toBuilder().clearAccessTokenData().build() }
+    userDataDataStore.updateData { userData -> userData.toBuilder().clearAccessTokenData().build() }
+  }
+
+  override suspend fun readAccessTokenData(): AccessTokenData? {
+    val userData = userDataDataStore.data.first()
+    return userData.accessTokenData
+  }
+
+  override suspend fun saveImportedModels(importedModels: List<ImportedModel>) {
+    dataStore.updateData { settings ->
+      settings.toBuilder().clearImportedModel().addAllImportedModel(importedModels).build()
     }
   }
 
-  override fun saveSecret(key: String, value: String) {
-    runBlocking {
-      userDataDataStore.updateData { userData ->
-        userData.toBuilder().putSecrets(key, value).build()
-      }
-    }
+  override suspend fun readImportedModels(): List<ImportedModel> {
+    val settings = dataStore.data.first()
+    return settings.importedModelList
   }
 
-  override fun readSecret(key: String): String? {
-    return runBlocking { userDataDataStore.data.first().secretsMap[key] }
+  override suspend fun isTosAccepted(): Boolean {
+    val settings = dataStore.data.first()
+    return settings.isTosAccepted
   }
 
-  override fun deleteSecret(key: String) {
-    runBlocking {
-      userDataDataStore.updateData { userData -> userData.toBuilder().removeSecrets(key).build() }
-    }
+  override suspend fun acceptTos() {
+    dataStore.updateData { settings -> settings.toBuilder().setIsTosAccepted(true).build() }
   }
 
-  override fun saveAccessTokenData(accessToken: String, refreshToken: String, expiresAt: Long) {
-    runBlocking {
-      // Clear the entry in old data store.
-      dataStore.updateData { settings ->
-        settings.toBuilder().setAccessTokenData(AccessTokenData.getDefaultInstance()).build()
-      }
-
-      userDataDataStore.updateData { userData ->
-        userData
-          .toBuilder()
-          .setAccessTokenData(
-            AccessTokenData.newBuilder()
-              .setAccessToken(accessToken)
-              .setRefreshToken(refreshToken)
-              .setExpiresAtMs(expiresAt)
-              .build()
-          )
-          .build()
-      }
-    }
+  override suspend fun isGemmaTermsOfUseAccepted(): Boolean {
+    val settings = dataStore.data.first()
+    return settings.isGemmaTermsAccepted
   }
 
-  override fun clearAccessTokenData() {
-    runBlocking {
-      dataStore.updateData { settings -> settings.toBuilder().clearAccessTokenData().build() }
-      userDataDataStore.updateData { userData ->
-        userData.toBuilder().clearAccessTokenData().build()
-      }
-    }
+  override suspend fun acceptGemmaTermsOfUse() {
+    dataStore.updateData { settings -> settings.toBuilder().setIsGemmaTermsAccepted(true).build() }
   }
 
-  override fun readAccessTokenData(): AccessTokenData? {
-    return runBlocking {
-      val userData = userDataDataStore.data.first()
-      userData.accessTokenData
-    }
+  override suspend fun getHasRunTinyGarden(): Boolean {
+    val settings = dataStore.data.first()
+    return settings.hasRunTinyGarden
   }
 
-  override fun saveImportedModels(importedModels: List<ImportedModel>) {
-    runBlocking {
-      dataStore.updateData { settings ->
-        settings.toBuilder().clearImportedModel().addAllImportedModel(importedModels).build()
-      }
-    }
+  override suspend fun setHasRunTinyGarden(hasRun: Boolean) {
+    dataStore.updateData { settings -> settings.toBuilder().setHasRunTinyGarden(hasRun).build() }
   }
 
-  override fun readImportedModels(): List<ImportedModel> {
-    return runBlocking {
-      val settings = dataStore.data.first()
-      settings.importedModelList
-    }
+  override suspend fun addCutout(cutout: Cutout) {
+    cutoutDataStore.updateData { cutouts -> cutouts.toBuilder().addCutout(cutout).build() }
   }
 
-  override fun isTosAccepted(): Boolean {
-    return runBlocking {
-      val settings = dataStore.data.first()
-      settings.isTosAccepted
-    }
+  override suspend fun getAllCutouts(): List<Cutout> {
+    return cutoutDataStore.data.first().cutoutList
   }
 
-  override fun acceptTos() {
-    runBlocking {
-      dataStore.updateData { settings -> settings.toBuilder().setIsTosAccepted(true).build() }
-    }
-  }
-
-  override fun isGemmaTermsOfUseAccepted(): Boolean {
-    return runBlocking {
-      val settings = dataStore.data.first()
-      settings.isGemmaTermsAccepted
-    }
-  }
-
-  override fun acceptGemmaTermsOfUse() {
-    runBlocking {
-      dataStore.updateData { settings ->
-        settings.toBuilder().setIsGemmaTermsAccepted(true).build()
-      }
-    }
-  }
-
-  override fun getHasRunTinyGarden(): Boolean {
-    return runBlocking {
-      val settings = dataStore.data.first()
-      settings.hasRunTinyGarden
-    }
-  }
-
-  override fun setHasRunTinyGarden(hasRun: Boolean) {
-    runBlocking {
-      dataStore.updateData { settings -> settings.toBuilder().setHasRunTinyGarden(hasRun).build() }
-    }
-  }
-
-  override fun addCutout(cutout: Cutout) {
-    runBlocking {
-      cutoutDataStore.updateData { cutouts -> cutouts.toBuilder().addCutout(cutout).build() }
-    }
-  }
-
-  override fun getAllCutouts(): List<Cutout> {
-    return runBlocking { cutoutDataStore.data.first().cutoutList }
-  }
-
-  override fun setCutout(newCutout: Cutout) {
-    runBlocking {
-      cutoutDataStore.updateData { cutouts ->
-        var index = -1
-        for (i in 0..<cutouts.cutoutCount) {
-          val cutout = cutouts.cutoutList.get(i)
-          if (cutout.id == newCutout.id) {
-            index = i
-            break
-          }
-        }
-        if (index >= 0) {
-          cutouts.toBuilder().setCutout(index, newCutout).build()
-        } else {
-          cutouts
+  override suspend fun setCutout(newCutout: Cutout) {
+    cutoutDataStore.updateData { cutouts ->
+      var index = -1
+      for (i in 0..<cutouts.cutoutCount) {
+        val cutout = cutouts.cutoutList.get(i)
+        if (cutout.id == newCutout.id) {
+          index = i
+          break
         }
       }
-    }
-  }
-
-  override fun setCutouts(cutouts: List<Cutout>) {
-    runBlocking {
-      cutoutDataStore.updateData { CutoutCollection.newBuilder().addAllCutout(cutouts).build() }
-    }
-  }
-
-  override fun setHasSeenBenchmarkComparisonHelp(seen: Boolean) {
-    runBlocking {
-      dataStore.updateData { settings ->
-        settings.toBuilder().setHasSeenBenchmarkComparisonHelp(seen).build()
+      if (index >= 0) {
+        cutouts.toBuilder().setCutout(index, newCutout).build()
+      } else {
+        cutouts
       }
     }
   }
 
-  override fun getHasSeenBenchmarkComparisonHelp(): Boolean {
-    return runBlocking {
-      val settings = dataStore.data.first()
-      settings.hasSeenBenchmarkComparisonHelp
+  override suspend fun setCutouts(cutouts: List<Cutout>) {
+    cutoutDataStore.updateData { CutoutCollection.newBuilder().addAllCutout(cutouts).build() }
+  }
+
+  override suspend fun setHasSeenBenchmarkComparisonHelp(seen: Boolean) {
+    dataStore.updateData { settings ->
+      settings.toBuilder().setHasSeenBenchmarkComparisonHelp(seen).build()
     }
   }
 
-  override fun addBenchmarkResult(result: BenchmarkResult) {
-    runBlocking {
-      benchmarkResultsDataStore.updateData { results ->
-        results.toBuilder().addResult(0, result).build()
+  override suspend fun getHasSeenBenchmarkComparisonHelp(): Boolean {
+    val settings = dataStore.data.first()
+    return settings.hasSeenBenchmarkComparisonHelp
+  }
+
+  override suspend fun addBenchmarkResult(result: BenchmarkResult) {
+    benchmarkResultsDataStore.updateData { results ->
+      results.toBuilder().addResult(0, result).build()
+    }
+  }
+
+  override suspend fun getAllBenchmarkResults(): List<BenchmarkResult> {
+    return benchmarkResultsDataStore.data.first().resultList
+  }
+
+  override suspend fun deleteBenchmarkResult(index: Int) {
+    benchmarkResultsDataStore.updateData { results ->
+      results.toBuilder().removeResult(index).build()
+    }
+  }
+
+  override suspend fun addSkill(skill: Skill) {
+    skillsDataStore.updateData { skills ->
+      val newSkills = buildList {
+        add(skill)
+        addAll(skills.skillList)
       }
+      skills.toBuilder().clearSkill().addAllSkill(newSkills).build()
     }
   }
 
-  override fun getAllBenchmarkResults(): List<BenchmarkResult> {
-    return runBlocking { benchmarkResultsDataStore.data.first().resultList }
-  }
-
-  override fun deleteBenchmarkResult(index: Int) {
-    runBlocking {
-      benchmarkResultsDataStore.updateData { results ->
-        val newResults = results.toBuilder().removeResult(index).build()
-        newResults
-      }
+  override suspend fun setSkills(skills: List<Skill>) {
+    skillsDataStore.updateData { curSkills ->
+      curSkills.toBuilder().clearSkill().addAllSkill(skills).build()
     }
   }
 
-  override fun addSkill(skill: Skill) {
-    runBlocking {
-      skillsDataStore.updateData { skills ->
-        val newSkills = buildList {
-          add(skill)
-          addAll(skills.skillList)
-        }
-        skills.toBuilder().clearSkill().addAllSkill(newSkills).build()
-      }
-    }
-  }
-
-  override fun setSkills(skills: List<Skill>) {
-    runBlocking {
-      skillsDataStore.updateData { curSkills ->
-        curSkills.toBuilder().clearSkill().addAllSkill(skills).build()
-      }
-    }
-  }
-
-  override fun setSkillSelected(skill: Skill, selected: Boolean) {
-    runBlocking {
-      skillsDataStore.updateData { skills ->
-        val newSkills = mutableListOf<Skill>()
-        for (curSkill in skills.skillList) {
-          if (curSkill.name == skill.name) {
-            newSkills.add(curSkill.toBuilder().setSelected(selected).build())
-          } else {
-            newSkills.add(curSkill)
-          }
-        }
-        Skills.newBuilder().addAllSkill(newSkills).build()
-      }
-    }
-  }
-
-  override fun setAllSkillsSelected(selected: Boolean) {
-    runBlocking {
-      skillsDataStore.updateData { skills ->
-        val newSkills = mutableListOf<Skill>()
-        for (curSkill in skills.skillList) {
+  override suspend fun setSkillSelected(skill: Skill, selected: Boolean) {
+    skillsDataStore.updateData { skills ->
+      val newSkills = mutableListOf<Skill>()
+      for (curSkill in skills.skillList) {
+        if (curSkill.name == skill.name) {
           newSkills.add(curSkill.toBuilder().setSelected(selected).build())
+        } else {
+          newSkills.add(curSkill)
         }
-        Skills.newBuilder().addAllSkill(newSkills).build()
       }
+      Skills.newBuilder().addAllSkill(newSkills).build()
     }
   }
 
-  override fun getAllSkills(): List<Skill> {
-    return runBlocking { skillsDataStore.data.first().skillList }
+  override suspend fun setAllSkillsSelected(selected: Boolean) {
+    skillsDataStore.updateData { skills ->
+      val newSkills = mutableListOf<Skill>()
+      for (curSkill in skills.skillList) {
+        newSkills.add(curSkill.toBuilder().setSelected(selected).build())
+      }
+      Skills.newBuilder().addAllSkill(newSkills).build()
+    }
   }
 
-  override fun deleteSkill(name: String) {
-    runBlocking {
-      skillsDataStore.updateData { skills ->
-        val newSkills = mutableListOf<Skill>()
-        for (skill in skills.skillList) {
-          if (skill.name != name) {
-            newSkills.add(skill)
-          }
+  override suspend fun getAllSkills(): List<Skill> {
+    return skillsDataStore.data.first().skillList
+  }
+
+  override suspend fun deleteSkill(name: String) {
+    skillsDataStore.updateData { skills ->
+      val newSkills = mutableListOf<Skill>()
+      for (skill in skills.skillList) {
+        if (skill.name != name) {
+          newSkills.add(skill)
         }
-        Skills.newBuilder().addAllSkill(newSkills).build()
       }
+      Skills.newBuilder().addAllSkill(newSkills).build()
     }
   }
 
@@ -406,31 +343,25 @@ class DefaultDataStoreRepository(
     }
   }
 
-  override fun addViewedPromoId(promoId: String) {
-    runBlocking {
-      dataStore.updateData { settings ->
-        if (settings.viewedPromoIdList.contains(promoId)) {
-          settings
-        } else {
-          settings.toBuilder().addViewedPromoId(promoId).build()
-        }
+  override suspend fun addViewedPromoId(promoId: String) {
+    dataStore.updateData { settings ->
+      if (settings.viewedPromoIdList.contains(promoId)) {
+        settings
+      } else {
+        settings.toBuilder().addViewedPromoId(promoId).build()
       }
     }
   }
 
-  override fun removeViewedPromoId(promoId: String) {
-    runBlocking {
-      dataStore.updateData { settings ->
-        val newList = settings.viewedPromoIdList.filter { it != promoId }
-        settings.toBuilder().clearViewedPromoId().addAllViewedPromoId(newList).build()
-      }
+  override suspend fun removeViewedPromoId(promoId: String) {
+    dataStore.updateData { settings ->
+      val newList = settings.viewedPromoIdList.filter { it != promoId }
+      settings.toBuilder().clearViewedPromoId().addAllViewedPromoId(newList).build()
     }
   }
 
-  override fun hasViewedPromo(promoId: String): Boolean {
-    return runBlocking {
-      val settings = dataStore.data.first()
-      settings.viewedPromoIdList.contains(promoId)
-    }
+  override suspend fun hasViewedPromo(promoId: String): Boolean {
+    val settings = dataStore.data.first()
+    return settings.viewedPromoIdList.contains(promoId)
   }
 }
