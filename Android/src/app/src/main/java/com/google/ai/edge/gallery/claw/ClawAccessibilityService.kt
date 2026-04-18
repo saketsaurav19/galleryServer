@@ -234,7 +234,7 @@ class ClawAccessibilityService : AccessibilityService() {
       val args = android.os.Bundle().apply {
         putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
       }
-      focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+      val result = focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
       return result
     }
     return false
