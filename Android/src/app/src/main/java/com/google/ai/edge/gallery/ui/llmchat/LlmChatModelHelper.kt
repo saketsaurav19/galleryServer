@@ -215,8 +215,6 @@ object LlmChatModelHelper : LlmModelHelper {
       Log.d(TAG, "Resetting conversation for model '${model.name}'")
 
       val instance = model.instance as LlmModelInstance? ?: return
-      instance.conversation.close()
-
       val engine = instance.engine
       val topK = model.getIntConfigValue(key = ConfigKeys.TOPK, defaultValue = DEFAULT_TOPK)
       val topP = model.getFloatConfigValue(key = ConfigKeys.TOPP, defaultValue = DEFAULT_TOPP)
@@ -251,7 +249,13 @@ object LlmChatModelHelper : LlmModelHelper {
           )
         )
       ExperimentalFlags.enableConversationConstrainedDecoding = false
+      val oldConversation = instance.conversation
       instance.conversation = newConversation
+      try {
+        oldConversation.close()
+      } catch (e: Exception) {
+        Log.e(TAG, "Failed to close old conversation", e)
+      }
 
       Log.d(TAG, "Resetting done")
     } catch (e: Exception) {

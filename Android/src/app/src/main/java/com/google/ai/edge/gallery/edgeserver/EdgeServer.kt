@@ -126,6 +126,7 @@ class EdgeServer(
         addProperty("id", activeModelDisplayName.ifEmpty { model.name })
         addProperty("object", "model")
         addProperty("owned_by", "ai-edge-gallery")
+        addProperty("accelerator", EdgeServerManager.state.value.accelerator)
       }
       """{"object":"list","data":[${gson.toJson(obj)}]}"""
     } else {
