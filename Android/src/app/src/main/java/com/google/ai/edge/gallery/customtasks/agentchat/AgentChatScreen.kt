@@ -120,7 +120,6 @@ fun AgentChatScreen(
 ) {
   val context = LocalContext.current
   agentTools.context = context
-  agentTools.skillManagerViewModel = skillManagerViewModel
   val density = LocalDensity.current
   val windowInfo = LocalWindowInfo.current
   val screenWidthDp = remember { with(density) { windowInfo.containerSize.width.toDp() } }

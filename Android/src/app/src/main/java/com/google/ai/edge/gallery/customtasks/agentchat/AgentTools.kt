@@ -25,6 +25,9 @@ import com.google.ai.edge.gallery.common.CallJsSkillResultImage
 import com.google.ai.edge.gallery.common.CallJsSkillResultWebview
 import com.google.ai.edge.gallery.common.LOCAL_URL_BASE
 import com.google.ai.edge.gallery.common.SkillProgressAgentAction
+import com.google.ai.edge.gallery.data.DataStoreRepository
+import com.google.ai.edge.gallery.data.SkillRepository
+import com.google.ai.edge.gallery.proto.Skill
 import com.google.ai.edge.litertlm.Tool
 import com.google.ai.edge.litertlm.ToolParam
 import com.google.ai.edge.litertlm.ToolSet
@@ -38,8 +41,8 @@ import kotlinx.coroutines.runBlocking
 private const val TAG = "AGAgentTools"
 
 class AgentTools(
-  private val skillRepository: SkillRepository,
-  private val dataStoreRepository: DataStoreRepository,
+  val skillRepository: SkillRepository,
+  val dataStoreRepository: DataStoreRepository,
 ) : ToolSet {
   lateinit var context: Context
 
@@ -55,7 +58,7 @@ class AgentTools(
   ): Map<String, String> {
     return runBlocking(Dispatchers.Default) {
       val skills = skillRepository.getSelectedSkills()
-      val skill = skills.find { it.name == skillName.trim() }
+      val skill = skills.find { s -> s.name == skillName.trim() }
       val skillContent =
         if (skill != null) {
           "---\nname: ${skill.name}\ndescription: ${skill.description}\n---\n\n${skill.instructions}"
@@ -105,7 +108,7 @@ class AgentTools(
       )
 
       val skills = skillRepository.getSelectedSkills()
-      val skill = skills.find { it.name == skillName.trim() }
+      val skill = skills.find { s -> s.name == skillName.trim() }
 
       if (skill == null) {
         _actionChannel.send(

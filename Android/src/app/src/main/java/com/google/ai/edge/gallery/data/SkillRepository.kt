@@ -198,7 +198,7 @@ constructor(
       Skill.newBuilder()
         .setName(name)
         .setDescription(description)
-        .setInstruction(instruction)
+        .setInstructions(instruction)
         .setBuiltIn(builtIn)
         .setSelected(selected)
         .setImportDirName(importDir)

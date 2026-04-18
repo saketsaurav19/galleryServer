@@ -1114,7 +1114,6 @@ constructor(
       tasks.get(key = BuiltInTaskId.LLM_CHAT)?.models?.add(model)
       tasks.get(key = BuiltInTaskId.LLM_PROMPT_LAB)?.models?.add(model)
       tasks.get(key = BuiltInTaskId.LLM_AGENT_CHAT)?.models?.add(model)
-      tasks.get(key = BuiltInTaskId.LLM_WEBVIEW_AGENT)?.models?.add(model)
       if (model.llmSupportImage) {
         tasks.get(key = BuiltInTaskId.LLM_ASK_IMAGE)?.models?.add(model)
       }
