@@ -57,6 +57,9 @@ data class TinyGardenUiState(
 
   // The number of turns.
   val numTurns: Int = 0,
+
+  // Whether the user has run Tiny Garden before.
+  val hasRunTinyGarden: Boolean = true,
 )
 
 /** The ViewModel of the task screen. */
@@ -69,6 +72,20 @@ constructor(
 ) : ViewModel() {
   protected val _uiState = MutableStateFlow(TinyGardenUiState())
   val uiState = _uiState.asStateFlow()
+
+  init {
+    viewModelScope.launch(Dispatchers.IO) {
+      val hasRun = dataStoreRepository.getHasRunTinyGarden()
+      _uiState.update { it.copy(hasRunTinyGarden = hasRun) }
+    }
+  }
+
+  fun setHasRunTinyGarden(hasRun: Boolean) {
+    viewModelScope.launch(Dispatchers.IO) {
+      dataStoreRepository.setHasRunTinyGarden(hasRun)
+      _uiState.update { it.copy(hasRunTinyGarden = hasRun) }
+    }
+  }
 
   private val _isResettingConversation = MutableStateFlow(false)
   private val isResettingConversation = _isResettingConversation.asStateFlow()

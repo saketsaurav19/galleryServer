@@ -533,9 +533,9 @@ fun MainUi(
                       Log.d(TAG, "webview finished loading")
 
                       // Show help on first launch.
-                      if (!viewModel.dataStoreRepository.getHasRunTinyGarden()) {
+                      if (!uiState.hasRunTinyGarden) {
                         Log.d(TAG, "First time running Tiny Garden. Showing help screen...")
-                        viewModel.dataStoreRepository.setHasRunTinyGarden(true)
+                        viewModel.setHasRunTinyGarden(true)
                         scope.launch {
                           delay(1000)
                           webViewRef
@@ -591,10 +591,11 @@ fun MainUi(
                 // Load page.
                 //
                 // http://appassets.androidplatform.net' is the recommended, reserved domain.
+                // loadUrl(url)
                 var url = "$ASSETS_BASE_URL/assets/tinygarden/index.html"
-                if (!viewModel.dataStoreRepository.getHasRunTinyGarden()) {
+                if (!uiState.hasRunTinyGarden) {
                   Log.d(TAG, "First time running Tiny Garden. Showing tutorial screen...")
-                  viewModel.dataStoreRepository.setHasRunTinyGarden(true)
+                  viewModel.setHasRunTinyGarden(true)
                   url = "$url?tutorial=1"
                 }
                 loadUrl(url)

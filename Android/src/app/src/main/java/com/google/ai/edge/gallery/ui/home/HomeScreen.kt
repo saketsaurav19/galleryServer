@@ -172,7 +172,8 @@ fun HomeScreen(
 ) {
   val uiState by modelManagerViewModel.uiState.collectAsState()
   var showSettingsDialog by remember { mutableStateOf(false) }
-  var showTosDialog by remember { mutableStateOf(!tosViewModel.getIsTosAccepted()) }
+  var showTosDialog by remember { mutableStateOf(true) }
+  LaunchedEffect(Unit) { showTosDialog = !tosViewModel.getIsTosAccepted() }
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
   val isDevBuild = context.packageName.endsWith(".dev")
@@ -562,7 +563,7 @@ fun HomeScreen(
   // Settings dialog.
   if (showSettingsDialog) {
     SettingsDialog(
-      curThemeOverride = modelManagerViewModel.readThemeOverride(),
+      curThemeOverride = uiState.themeOverride,
       modelManagerViewModel = modelManagerViewModel,
       onDismissed = { showSettingsDialog = false },
     )

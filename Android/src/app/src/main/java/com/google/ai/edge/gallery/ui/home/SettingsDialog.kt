@@ -95,7 +95,8 @@ fun SettingsDialog(
   onDismissed: () -> Unit,
 ) {
   var selectedTheme by remember { mutableStateOf(curThemeOverride) }
-  var hfToken by remember { mutableStateOf(modelManagerViewModel.getTokenStatusAndData().data) }
+  var hfToken by remember { mutableStateOf<AccessTokenData?>(null) }
+  LaunchedEffect(Unit) { hfToken = modelManagerViewModel.getTokenStatusAndData().data }
   val dateFormatter = remember {
     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
       .withZone(ZoneId.systemDefault())
@@ -105,6 +106,7 @@ fun SettingsDialog(
   var isFocused by remember { mutableStateOf(false) }
   val focusRequester = remember { FocusRequester() }
   val interactionSource = remember { MutableInteractionSource() }
+  val scope = rememberCoroutineScope()
   var showTos by remember { mutableStateOf(false) }
 
   Dialog(onDismissRequest = onDismissed) {
@@ -237,7 +239,7 @@ fun SettingsDialog(
                   refreshToken = "",
                   expiresAt = System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 365 * 10,
                 )
-                hfToken = modelManagerViewModel.getTokenStatusAndData().data
+                scope.launch { hfToken = modelManagerViewModel.getTokenStatusAndData().data }
                 focusManager.clearFocus()
               }
               BasicTextField(

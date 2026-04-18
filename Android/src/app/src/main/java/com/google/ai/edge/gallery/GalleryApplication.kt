@@ -21,6 +21,7 @@ import com.google.ai.edge.gallery.data.DataStoreRepository
 import com.google.ai.edge.gallery.ui.theme.ThemeSettings
 import com.google.firebase.FirebaseApp
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -32,7 +33,7 @@ class GalleryApplication : Application() {
     super.onCreate()
 
     // Load saved theme.
-    ThemeSettings.themeOverride.value = dataStoreRepository.readTheme()
+    ThemeSettings.themeOverride.value = runBlocking { dataStoreRepository.readTheme() }
 
     FirebaseApp.initializeApp(this)
   }

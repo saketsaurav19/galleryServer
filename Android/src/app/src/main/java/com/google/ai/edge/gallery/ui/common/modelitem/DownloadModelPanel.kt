@@ -47,6 +47,8 @@ import com.google.ai.edge.gallery.data.ModelDownloadStatusType
 import com.google.ai.edge.gallery.data.RuntimeType
 import com.google.ai.edge.gallery.data.Task
 import com.google.ai.edge.gallery.ui.common.DownloadAndTryButton
+import com.google.ai.edge.gallery.ui.modelmanager.ModelInitializationStatus
+import com.google.ai.edge.gallery.ui.modelmanager.ModelInitializationStatusType
 import com.google.ai.edge.gallery.ui.modelmanager.ModelManagerViewModel
 
 @OptIn(ExperimentalSharedTransitionApi::class)

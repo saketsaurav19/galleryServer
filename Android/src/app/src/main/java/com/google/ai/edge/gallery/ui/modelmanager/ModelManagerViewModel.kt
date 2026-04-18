@@ -145,6 +145,9 @@ data class ModelManagerUiState(
   val configValuesUpdateTrigger: Long = 0L,
   // Updated when model is imported of an imported model is deleted.
   val modelImportingUpdateTrigger: Long = 0L,
+
+  /** The current theme override settings. */
+  val themeOverride: Theme = Theme.getDefaultInstance(),
 ) {
   fun isModelInitialized(model: Model): Boolean {
     return modelInitializationStatus[model.name]?.status ==
@@ -814,15 +817,17 @@ constructor(
   }
 
   fun saveAccessToken(accessToken: String, refreshToken: String, expiresAt: Long) {
-    dataStoreRepository.saveAccessTokenData(
-      accessToken = accessToken,
-      refreshToken = refreshToken,
-      expiresAt = expiresAt,
-    )
+    viewModelScope.launch(Dispatchers.IO) {
+      dataStoreRepository.saveAccessTokenData(
+        accessToken = accessToken,
+        refreshToken = refreshToken,
+        expiresAt = expiresAt,
+      )
+    }
   }
 
   fun clearAccessToken() {
-    dataStoreRepository.clearAccessTokenData()
+    viewModelScope.launch(Dispatchers.IO) { dataStoreRepository.clearAccessTokenData() }
   }
 
   // TODO: b/494029782 - Both litertlm and aicore download and storage should be unified into a
@@ -1158,6 +1163,8 @@ constructor(
     val textInputHistory = dataStoreRepository.readTextInputHistory()
     Log.d(TAG, "text input history: $textInputHistory")
 
+    val theme = dataStoreRepository.readThemeOverride()
+
     Log.d(TAG, "model download status: $modelDownloadStatus")
     return ModelManagerUiState(
       tasks = getActiveCustomTasks().map { it.task }.toList(),
@@ -1165,6 +1172,7 @@ constructor(
       modelDownloadStatus = modelDownloadStatus,
       modelInitializationStatus = modelInstances,
       textInputHistory = textInputHistory,
+      themeOverride = theme,
     )
   }
 
