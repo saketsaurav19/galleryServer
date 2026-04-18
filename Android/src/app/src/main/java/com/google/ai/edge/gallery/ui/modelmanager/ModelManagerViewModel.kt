@@ -147,7 +147,7 @@ data class ModelManagerUiState(
   val modelImportingUpdateTrigger: Long = 0L,
 
   /** The current theme override settings. */
-  val themeOverride: Theme = Theme.getDefaultInstance(),
+  val themeOverride: Theme = Theme.THEME_AUTO,
 ) {
   fun isModelInitialized(model: Model): Boolean {
     return modelInitializationStatus[model.name]?.status ==
@@ -1163,7 +1163,7 @@ constructor(
     val textInputHistory = dataStoreRepository.readTextInputHistory()
     Log.d(TAG, "text input history: $textInputHistory")
 
-    val theme = dataStoreRepository.readThemeOverride()
+    val theme = dataStoreRepository.readTheme()
 
     Log.d(TAG, "model download status: $modelDownloadStatus")
     return ModelManagerUiState(

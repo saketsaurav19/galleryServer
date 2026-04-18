@@ -264,7 +264,7 @@ fun GlobalModelManager(
             PromoBannerGm4(
               onDismiss = {
                 showPromo = false
-                viewModel.dataStoreRepository.addViewedPromoId(promoId = promoId)
+                scope.launch { viewModel.dataStoreRepository.addViewedPromoId(promoId = promoId) }
               }
             )
           }

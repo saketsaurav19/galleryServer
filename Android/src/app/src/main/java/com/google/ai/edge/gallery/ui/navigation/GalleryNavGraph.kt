@@ -249,7 +249,12 @@ fun GalleryNavHost(
     // Home screen.
     composable(route = ROUTE_HOMESCREEN) {
       // Create a state to trigger PromoScreen fade in animation.
+      val scope = rememberCoroutineScope()
       val promoId = "gm4"
+      var hasViewedPromo by remember { mutableStateOf(true) }
+      LaunchedEffect(Unit) {
+        hasViewedPromo = modelManagerViewModel.dataStoreRepository.hasViewedPromo(promoId = promoId)
+      }
       Box(modifier = modifier.fillMaxSize()) {
         var promoDismissed by remember { mutableStateOf(false) }
 
@@ -275,7 +280,7 @@ fun GalleryNavHost(
         }
 
         // Show home page directly if promo has been viewed.
-        if (modelManagerViewModel.dataStoreRepository.hasViewedPromo(promoId = promoId)) {
+        if (hasViewedPromo) {
           homeScreenContent()
         }
         // If the promo has not been viewed, show promo screen first.
@@ -299,7 +304,9 @@ fun GalleryNavHost(
               ) {
                 PromoScreenGm4(
                   onDismiss = {
-                    modelManagerViewModel.dataStoreRepository.addViewedPromoId(promoId = promoId)
+                    scope.launch {
+                      modelManagerViewModel.dataStoreRepository.addViewedPromoId(promoId = promoId)
+                    }
                     promoDismissed = true
                   }
                 )
