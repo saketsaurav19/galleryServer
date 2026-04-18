@@ -115,6 +115,42 @@ fun ClawScreen(
   } ?: "No model"
   var showModelPicker by remember { mutableStateOf(false) }
 
+  val prefs = remember { context.getSharedPreferences("claw_prefs", android.content.Context.MODE_PRIVATE) }
+  var autoInitStarted by remember { mutableStateOf(false) }
+
+  // Auto-select and initialize model if none active
+  LaunchedEffect(downloadedModels, agentState.isRunning) {
+    if (ClawAgent.activeModel != null || downloadedModels.isEmpty() || autoInitStarted || agentState.isRunning) return@LaunchedEffect
+    
+    autoInitStarted = true
+    val savedModelName = prefs.getString("last_model", null)
+    val model = downloadedModels.find { it.name == savedModelName } ?: downloadedModels.first()
+    
+    // Save for next time
+    prefs.edit().putString("last_model", model.name).apply()
+    
+    val task = modelManagerViewModel?.uiState?.value?.tasks?.find { t ->
+      t.models.any { it.name == model.name }
+    }
+    
+    if (task != null) {
+      if (model.instance != null) {
+        ClawAgent.activeModel = model
+        ClawAgent.activeModelHelper = model.runtimeHelper
+      } else {
+        modelManagerViewModel.initializeModel(
+          context = context,
+          task = task,
+          model = model,
+          onDone = {
+            ClawAgent.activeModel = model
+            ClawAgent.activeModelHelper = model.runtimeHelper
+          }
+        )
+      }
+    }
+  }
+
   // Auto-scroll to bottom when messages change
   LaunchedEffect(agentState.messages.size) {
     if (agentState.messages.isNotEmpty()) {
@@ -229,6 +265,9 @@ fun ClawScreen(
                       t.models.any { it.name == model.name }
                     }
                     if (task != null) {
+                      // Save preference
+                      prefs.edit().putString("last_model", model.name).apply()
+                      
                       // Clean up previous model to prevent OOM crash
                       val prevModel = ClawAgent.activeModel
                       if (prevModel != null && prevModel.name != model.name) {

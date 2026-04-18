@@ -220,8 +220,9 @@ fun GalleryNavHost(
     }
 
     if (model.instance == null) {
+      // Find any task that supports this model
       val task = navUiState.tasks.find { t ->
-        t.models.any { it.name == model.name } && t.id != com.google.ai.edge.gallery.data.BuiltInTaskId.LLM_AGENT_CHAT
+        t.models.any { it.name == model.name }
       }
       if (task != null) {
         Log.i(TAG, "Auto-initializing model '${model.name}' with task '${task.id}'")

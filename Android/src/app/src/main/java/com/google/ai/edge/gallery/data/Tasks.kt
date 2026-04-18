@@ -154,6 +154,7 @@ private val allLegacyTaskIds: MutableSet<String> =
     BuiltInTaskId.LLM_ASK_IMAGE,
     BuiltInTaskId.LLM_ASK_AUDIO,
     BuiltInTaskId.LLM_AGENT_CHAT,
+    BuiltInTaskId.LLM_WEBVIEW_AGENT,
   )
 
 fun isLegacyTasks(id: String): Boolean {

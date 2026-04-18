@@ -129,40 +129,56 @@ Rules:
   // ───────────────────────────────────────────────────────────────────────
 
   private suspend fun agentLoop(task: String, context: Context, baseUrl: String) {
-    // Build prompt with user request
-    val prompt = buildPrompt(task)
+    var finished = false
+    var step = 1
+    
+    while (step <= MAX_STEPS && _state.value.isRunning && !finished) {
+      _state.value = _state.value.copy(stepCount = step)
+      
+      // Build prompt with full history to maintain context
+      val prompt = buildPrompt(task)
 
-    // Call model
-    _state.value = _state.value.copy(stepCount = 1)
-    val response = callEdgeServer(baseUrl, prompt)
-    if (response == null) {
-      addMessage("assistant", "Cannot run inference. Please make sure a model is loaded.")
-      return
+      // Call model
+      val response = callEdgeServer(baseUrl, prompt)
+      if (response == null) {
+        addMessage("assistant", "Cannot run inference. Please make sure a model is loaded and initialized.")
+        break
+      }
+
+      // Parse tool call
+      val toolCall = parseToolCall(response)
+      if (toolCall != null) {
+        val toolName = toolCall.get("tool")?.asString ?: "unknown"
+        val args = toolCall.getAsJsonObject("args") ?: JsonObject()
+
+        if (toolName == "reply") {
+          // Model just wants to reply, we are done
+          val msg = args.get("message")?.asString ?: response
+          addMessage("assistant", msg)
+          finished = true
+        } else {
+          // Execute tool
+          addMessage("assistant", "🔧 $toolName")
+          val result = withContext(Dispatchers.Main) {
+            ClawTools.execute(context, toolName, args)
+          }
+          addMessage("assistant", result)
+          _state.value = _state.value.copy(lastAction = "$toolName → $result")
+          
+          // Wait for UI to settle before next step
+          delay(STEP_DELAY_MS)
+        }
+      } else {
+        // Model responded with plain text, assume it's a reply and finish
+        addMessage("assistant", response)
+        finished = true
+      }
+      
+      step++
     }
-
-    // Parse tool call
-    val toolCall = parseToolCall(response)
-    if (toolCall != null) {
-      val toolName = toolCall.get("tool")?.asString ?: "unknown"
-      val args = toolCall.getAsJsonObject("args") ?: JsonObject()
-
-      if (toolName == "reply") {
-        // Model just wants to reply, no tool needed
-        val msg = args.get("message")?.asString ?: response
-        addMessage("assistant", msg)
-        return
-      }
-
-      // Execute tool
-      addMessage("assistant", "🔧 $toolName")
-      val result = withContext(Dispatchers.Main) {
-        ClawTools.execute(context, toolName, args)
-      }
-      addMessage("assistant", result)
-      _state.value = _state.value.copy(lastAction = "$toolName → $result")
-    } else {
-      // Model responded with plain text
-      addMessage("assistant", response)
+    
+    if (step > MAX_STEPS) {
+      addMessage("assistant", "Reached maximum steps ($MAX_STEPS). Stopping task.")
     }
   }
 
@@ -175,9 +191,14 @@ Rules:
       append("<start_of_turn>system\n")
       append(SYSTEM_PROMPT)
       append("<end_of_turn>\n")
-      append("<start_of_turn>user\n")
-      append(task)
-      append("<end_of_turn>\n")
+      
+      // Add message history
+      _state.value.messages.forEach { msg ->
+        append("<start_of_turn>${msg.role}\n")
+        append(msg.content)
+        append("<end_of_turn>\n")
+      }
+      
       append("<start_of_turn>model\n")
     }
   }
@@ -187,25 +208,33 @@ Rules:
   // ───────────────────────────────────────────────────────────────────────
 
   private suspend fun callEdgeServer(baseUrl: String, prompt: String): String? {
-    // Priority 1: ClawAgent's own model reference (set by NavGraph)
+    // Priority 1: ClawAgent's own model reference
     val model1 = activeModel
     val helper1 = activeModelHelper
-    if (model1 != null && helper1 != null && model1.instance != null) {
-      Log.i(TAG, "Using ClawAgent's direct model reference")
-      return directInference(helper1, model1, prompt)
+    if (model1 != null && helper1 != null) {
+      if (model1.instance != null) {
+        Log.i(TAG, "Using ClawAgent's direct model reference: ${model1.name}")
+        return directInference(helper1, model1, prompt)
+      } else {
+        Log.w(TAG, "ClawAgent's model reference exists but instance is null: ${model1.name}")
+      }
     }
 
     // Priority 2: EdgeServerManager's model
     val server = com.google.ai.edge.gallery.edgeserver.EdgeServerManager.server
     val model2 = server?.activeModel
     val helper2 = server?.activeModelHelper
-    if (model2 != null && helper2 != null && model2.instance != null) {
-      Log.i(TAG, "Using EdgeServerManager's model reference")
-      return directInference(helper2, model2, prompt)
+    if (model2 != null && helper2 != null) {
+      if (model2.instance != null) {
+        Log.i(TAG, "Using EdgeServerManager's model reference: ${model2.name}")
+        return directInference(helper2, model2, prompt)
+      } else {
+        Log.w(TAG, "EdgeServerManager's model reference exists but instance is null: ${model2.name}")
+      }
     }
 
     // Priority 3: HTTP fallback
-    Log.w(TAG, "No direct model access, falling back to HTTP at $baseUrl")
+    Log.w(TAG, "No direct model access or initialized instance, falling back to HTTP at $baseUrl")
     return httpInference(baseUrl, prompt)
   }
 
