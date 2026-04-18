@@ -16,6 +16,7 @@
 
 package com.google.ai.edge.gallery.ui.common.tos
 
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.ai.edge.gallery.data.DataStoreRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
